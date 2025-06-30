@@ -174,15 +174,31 @@ export default function Calendar() {
         return;
       }
 
-      console.log('✅ Schedule found, generating paginated PDF...');
+      console.log('✅ Schedule found, generating paginated PDF with DOM capture...');
+      
+      // DIAGNOSTIC: Check schedule data completeness
+      console.log('🔍 DIAGNOSTIC - Schedule Data Analysis:', {
+        totalDays: schedule.days.length,
+        monthYear: `${selectedMonth}/${selectedYear}`,
+        firstDay: format(schedule.days[0]?.date, 'yyyy-MM-dd (EEE)'),
+        lastDay: format(schedule.days[schedule.days.length - 1]?.date, 'yyyy-MM-dd (EEE)'),
+        currentMonthDays: schedule.days.filter(d => d.isCurrentMonth).length,
+        totalWeeks: Math.ceil(schedule.days.length / 7),
+        expectedDaysRange: '35-42 days for full month grid'
+      });
+      
+      // Get calendar DOM element with perfect styling
+      const calendarElement = document.getElementById('calendar-container');
+      if (!calendarElement) {
+        console.error('❌ Calendar container not found');
+        alert('Calendar container not found. Please try refreshing the page.');
+        return;
+      }
 
       // Create title and filename
       const monthName = MONTHS[selectedMonth - 1];
       const title = `Timetable ${monthName} ${selectedYear}`;
       const filename = `Timetable-${monthName}-${selectedYear}.pdf`;
-
-      // Group schedule days by weeks (2 weeks per page)
-      const weekGroups = groupDaysByWeeks(schedule.days, 2);
 
       // Get the full HTML including styles
       const extractedStyles = Array.from(document.styleSheets)
@@ -195,11 +211,8 @@ export default function Calendar() {
         })
         .join('\n');
 
-      // Generate HTML content with multiple pages
-      const pagesHtml = weekGroups.map((weekGroup, pageIndex) => {
-        const pageTitle = pageIndex === 0 ? title : '';
-        return generatePageHtml(weekGroup, pageTitle, pageIndex === weekGroups.length - 1);
-      }).join('\n');
+      // Capture the perfect DOM with all styling
+      const perfectCalendarHTML = calendarElement.outerHTML;
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -212,7 +225,8 @@ export default function Calendar() {
             </style>
           </head>
           <body>
-            ${pagesHtml}
+            <h1 style="text-align: center; font-size: 24px; font-weight: bold; margin: 0 0 20px 0; color: #1f2937;">${title}</h1>
+            ${perfectCalendarHTML}
           </body>
         </html>
       `;
@@ -253,121 +267,7 @@ export default function Calendar() {
     }
   };
 
-  // Helper function to group days by weeks
-  const groupDaysByWeeks = (days: DaySchedule[], weeksPerPage: number) => {
-    const weeks: DaySchedule[][] = [];
-    let currentWeek: DaySchedule[] = [];
-    let currentWeekNumber = -1;
-
-    days.forEach(day => {
-      const weekNumber = getISOWeek(day.date);
-      
-      if (weekNumber !== currentWeekNumber) {
-        if (currentWeek.length > 0) {
-          weeks.push(currentWeek);
-        }
-        currentWeek = [day];
-        currentWeekNumber = weekNumber;
-      } else {
-        currentWeek.push(day);
-      }
-    });
-
-    if (currentWeek.length > 0) {
-      weeks.push(currentWeek);
-    }
-
-    // Group weeks into pages
-    const pages: DaySchedule[][] = [];
-    for (let i = 0; i < weeks.length; i += weeksPerPage) {
-      const pageWeeks = weeks.slice(i, i + weeksPerPage);
-      pages.push(pageWeeks.flat());
-    }
-
-    return pages;
-  };
-
-  // Helper function to generate HTML for a single page
-  const generatePageHtml = (days: DaySchedule[], pageTitle: string, isLastPage: boolean) => {
-    const pageClass = isLastPage ? 'pdf-page' : 'pdf-page';
-    
-    return `
-      <div class="${pageClass}">
-        ${pageTitle ? `<h1 style="text-align: center; font-size: 24px; font-weight: bold; margin: 0 0 20px 0; color: #1f2937;">${pageTitle}</h1>` : ''}
-        <div class="overflow-x-auto bg-white rounded-lg shadow-md">
-          <div class="grid grid-cols-7 min-w-[1400px]">
-            ${DAYS.map(day => `<div class="p-2 text-center font-bold text-gray-600 bg-gray-200 border-l border-gray-300">${day}</div>`).join('')}
-            ${days.map(day => generateDayHtml(day)).join('')}
-          </div>
-        </div>
-      </div>
-    `;
-  };
-
-  // Helper function to generate HTML for a single day
-  const generateDayHtml = (day: DaySchedule) => {
-    const dayKey = format(day.date, 'yyyy-MM-dd');
-    const dayClasses = `border-t border-r border-gray-200 p-2 min-h-[200px] ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'} ${day.isHoliday ? 'bg-red-50' : ''}`;
-    
-    const staffCards = STAFF_MEMBERS.map(staff => {
-      const staffShift = day.staffShifts[staff.id];
-      const colorTheme = STAFF_COLORS[staff.id];
-      
-
-      
-      return `
-        <div class="${colorTheme.bg} ${colorTheme.text} ${colorTheme.border} border-l-4 rounded-md p-2 text-xs mb-2">
-          <div class="font-bold mb-1">${staff.name}</div>
-          ${generateShiftDisplayHtml(staffShift)}
-        </div>
-      `;
-    }).join('');
-
-    const replacementCards = (day.replacementShifts || []).map(rep => `
-      <div class="bg-gray-200 border-l-4 border-gray-400 rounded-md p-2 text-xs text-gray-700 mb-2">
-        <div class="font-bold flex justify-between">
-          <span>${rep.tempStaffName}</span> 
-          <span class="text-gray-500 italic">Temp</span>
-        </div>
-        <div class="flex items-center justify-between font-mono opacity-90">
-          <div class="flex items-center gap-1">${rep.startTime} → ${rep.endTime}</div>
-          <div class="font-bold">(${rep.workHours}h)</div>
-        </div>
-      </div>
-    `).join('');
-
-    return `
-      <div class="${dayClasses}">
-        <div class="flex justify-between items-center mb-2">
-          <span class="font-semibold text-sm ${!day.isCurrentMonth ? 'text-gray-400' : 'text-gray-800'}">${format(day.date, 'd')}</span>
-          <span class="text-xs text-gray-500">W${getISOWeek(day.date)}</span>
-        </div>
-        <div>
-          ${staffCards}
-          ${replacementCards}
-        </div>
-      </div>
-    `;
-  };
-
-  // Helper function to generate shift display HTML
-  const generateShiftDisplayHtml = (staffShift: DaySchedule['staffShifts'][string]) => {
-    if (staffShift.isLeave) {
-      return `<div class="font-bold text-orange-600">${staffShift.leaveType}</div>`;
-    }
-    if (!staffShift.shift) {
-      return `<div class="text-gray-500">Off</div>`;
-    }
-    
-    const { shift } = staffShift;
-    return `
-      <div class="flex items-center justify-between font-mono opacity-90">
-        <div class="flex items-center gap-1">⏰ ${shift.startTime} → ${shift.endTime}</div>
-        <div class="font-bold">(${shift.workHours}h)</div>
-        ${staffShift.isOverride ? '<span title="Manually Overridden">✏️</span>' : ''}
-      </div>
-    `;
-  };
+  
 
   // --- Memoized Calculations for Performance ---
   const weeklyHourSummaries = useMemo(() => schedule ? getWeeklyHourSummaries(schedule) : [], [schedule]);
