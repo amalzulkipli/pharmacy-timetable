@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
@@ -22,5 +25,30 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background-color: #e5e7eb;
+}
+
+.staff-card {
+  @apply bg-white p-2 rounded shadow-sm border;
+}
+
+.holiday-day {
+  @apply bg-red-50 border-red-200;
+}
+
+.warning-badge {
+  @apply bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded;
+}
+
+.success-badge {
+  @apply bg-green-100 text-green-800 text-xs px-2 py-1 rounded;
 }
