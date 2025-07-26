@@ -84,7 +84,7 @@ export const SHIFT_DEFINITIONS: { [key: string]: ShiftDefinition } = {
   "7h_late": {
     type: "7h",
     timing: "late",
-    startTime: "14:45",
+    startTime: "13:45",
     endTime: "21:45",
     workHours: 7,
   },
