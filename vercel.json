@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "name": "pharmacy-timetable",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_ADMIN_PASSWORD": "Alde1234"
+  },
+  "functions": {
+    "app/api/generate-pdf/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "regions": ["iad1"],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/$1"
+    }
+  ]
+}

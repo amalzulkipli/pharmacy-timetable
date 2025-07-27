@@ -6,6 +6,8 @@ import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Calendar as CalendarIcon, Edit, Save, X, Clock, ArrowRight, UserPlus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import DataManager from './DataManager';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -15,6 +17,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // Main Calendar Component
 // ================================================================================================
 export default function Calendar() {
+  const { isAdmin } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(7);
   const [selectedYear, setSelectedYear] = useState(2025);
   const [schedule, setSchedule] = useState<MonthSchedule | null>(null);
@@ -34,6 +37,13 @@ export default function Calendar() {
     const updatedSchedule = applyManualOverrides(baseSchedule, manualOverrides);
     setSchedule(updatedSchedule);
   }, [selectedMonth, selectedYear, manualOverrides]);
+
+  // Safety: Exit edit mode if user loses admin privileges
+  useEffect(() => {
+    if (!isAdmin && isEditMode) {
+      setIsEditMode(false);
+    }
+  }, [isAdmin, isEditMode]);
 
   const applyManualOverrides = (baseSchedule: MonthSchedule, overrides: Record<string, any>): MonthSchedule => {
     const updatedDays = baseSchedule.days.map(day => {
@@ -282,6 +292,7 @@ export default function Calendar() {
           selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth}
           selectedYear={selectedYear} setSelectedYear={setSelectedYear}
           isEditMode={isEditMode}
+          isAdmin={isAdmin}
           onEnterEditMode={handleEnterEditMode}
           onSaveChanges={handleSaveChanges}
           onCancelEdit={() => setIsEditMode(false)}
@@ -290,6 +301,8 @@ export default function Calendar() {
         />
         
         <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} />
+
+        <DataManager isAdmin={isAdmin} />
 
         <div id="calendar-container" className="overflow-x-auto bg-white rounded-lg shadow-md">
           <div className="grid grid-cols-7 min-w-[1400px]">
@@ -324,12 +337,13 @@ export default function Calendar() {
 // Sub-Components for a Cleaner Structure
 // ================================================================================================
 
-function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF }: {
+function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF }: {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
   setSelectedYear: (year: number) => void;
   isEditMode: boolean;
+  isAdmin: boolean;
   onEnterEditMode: () => void;
   onSaveChanges: () => void;
   onCancelEdit: () => void;
@@ -349,32 +363,36 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
           </select>
         </div>
         <div className="flex items-center gap-2">
-          {isEditMode ? (
+          {isAdmin && (
             <>
-              <button onClick={onSaveChanges} className="bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-green-700 transition-colors"><Save size={16}/> Save</button>
-              <button onClick={onCancelEdit} className="bg-gray-500 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-600 transition-colors"><X size={16}/> Cancel</button>
+              {isEditMode ? (
+                <>
+                  <button onClick={onSaveChanges} className="bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-green-700 transition-colors"><Save size={16}/> Save</button>
+                  <button onClick={onCancelEdit} className="bg-gray-500 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-600 transition-colors"><X size={16}/> Cancel</button>
+                </>
+              ) : (
+                <button onClick={onEnterEditMode} className="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-blue-700 transition-colors"><Edit size={16}/> Edit</button>
+              )}
+              
+              {/* Download Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={onDownloadCSV}
+                  className="bg-gray-700 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-800 transition-colors"
+                >
+                  <Download size={16} />
+                  CSV
+                </button>
+                <button
+                  onClick={onDownloadPDF}
+                  className="bg-gray-700 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-800 transition-colors"
+                >
+                  <Download size={16} />
+                  PDF
+                </button>
+              </div>
             </>
-          ) : (
-            <button onClick={onEnterEditMode} className="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-blue-700 transition-colors"><Edit size={16}/> Edit</button>
           )}
-          
-          {/* Download Buttons */}
-          <div className="flex gap-2">
-            <button
-              onClick={onDownloadCSV}
-              className="bg-gray-700 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-800 transition-colors"
-            >
-              <Download size={16} />
-              CSV
-            </button>
-            <button
-              onClick={onDownloadPDF}
-              className="bg-gray-700 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-800 transition-colors"
-            >
-              <Download size={16} />
-              PDF
-            </button>
-          </div>
         </div>
       </div>
     </div>
