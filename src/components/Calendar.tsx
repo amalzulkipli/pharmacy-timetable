@@ -7,6 +7,7 @@ import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, Replacem
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Calendar as CalendarIcon, Edit, Save, X, Clock, ArrowRight, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useScheduleOverrides } from '../hooks/useLocalStorage';
 import DataManager from './DataManager';
 
 
@@ -23,6 +24,7 @@ export default function Calendar() {
   const [schedule, setSchedule] = useState<MonthSchedule | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBuffer, setEditBuffer] = useState<Record<string, Record<string, string>>>({});
+  const { getOverridesForMonth, saveOverridesForMonth } = useScheduleOverrides();
   const [manualOverrides, setManualOverrides] = useState<Record<string, any>>({});
   
   // State for the replacement modal
@@ -32,6 +34,12 @@ export default function Calendar() {
 
 
   // --- Core Logic ---
+  useEffect(() => {
+    // Load persisted overrides for the current month
+    const persistedOverrides = getOverridesForMonth(selectedYear, selectedMonth);
+    setManualOverrides(persistedOverrides);
+  }, [selectedMonth, selectedYear, getOverridesForMonth]);
+
   useEffect(() => {
     const baseSchedule = generateMonthSchedule(selectedMonth, selectedYear);
     const updatedSchedule = applyManualOverrides(baseSchedule, manualOverrides);
@@ -113,6 +121,8 @@ export default function Calendar() {
       });
     });
     setManualOverrides(newOverrides);
+    // Save overrides to localStorage for the current month
+    saveOverridesForMonth(selectedYear, selectedMonth, newOverrides);
     setIsEditMode(false);
   };
 
@@ -154,6 +164,8 @@ export default function Calendar() {
     });
 
     setManualOverrides(newOverrides);
+    // Save overrides to localStorage for the current month
+    saveOverridesForMonth(selectedYear, selectedMonth, newOverrides);
     setReplacementModalOpen(false);
     setReplacementContext(null);
     // Reset dropdown in buffer
