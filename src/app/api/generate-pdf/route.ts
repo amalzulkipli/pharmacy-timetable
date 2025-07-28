@@ -48,28 +48,17 @@ export async function POST(request: NextRequest) {
             page-break-after: auto;
           }
           
-          /* CRITICAL: Fix Grid Layout Collapse */
-          .grid {
+          /* CRITICAL: Ensure calendar-grid works properly in PDF */
+          .calendar-grid {
             display: grid !important;
             width: 100% !important;
             grid-template-columns: repeat(7, 1fr) !important;
-          }
-          .grid-cols-7 {
-            display: grid !important;
-            grid-template-columns: repeat(7, 1fr) !important;
-            width: 100% !important;
+            gap: 1px !important;
+            background-color: #e5e7eb !important;
           }
           
-          /* Remove all width constraints that cause layout collapse */
-          .min-w-\\[1400px\\], 
-          .min-w-\\[4200px\\],
-          [class*="min-w-"] {
-            min-width: auto !important;
-            width: 100% !important;
-          }
-          
-          /* Force grid children to fill available space equally */
-          .grid > div {
+          /* Force calendar grid children to fill available space equally */
+          .calendar-grid > div {
             width: auto !important;
             min-width: 0 !important;
             max-width: none !important;
@@ -80,13 +69,7 @@ export async function POST(request: NextRequest) {
           #calendar-container {
             width: 100% !important;
             max-width: 100% !important;
-            min-width: auto !important;
             overflow: visible !important;
-          }
-          
-          /* Disable horizontal scrolling */
-          .overflow-x-auto {
-            overflow-x: visible !important;
           }
           
           /* Ensure calendar containers use full width */
@@ -105,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     // Add DOM manipulation to split calendar by weeks for multi-page PDF
     const manipulationResult = await page.evaluate(() => {
-      const calendar = document.querySelector('#calendar-container .grid');
+      const calendar = document.querySelector('#calendar-container .calendar-grid');
       if (!calendar) return { error: 'Calendar not found' };
 
       // Get all day cells (skip the first 7 header cells)
@@ -160,12 +143,12 @@ export async function POST(request: NextRequest) {
 
         // Create calendar container for this page
         const pageCalendarContainer = document.createElement('div');
-        pageCalendarContainer.className = 'overflow-x-auto bg-white rounded-lg shadow-md';
+        pageCalendarContainer.className = 'bg-white rounded-lg shadow-md';
         pageCalendarContainer.id = pageIndex === 0 ? 'calendar-container' : `calendar-container-${pageIndex}`;
 
         // Create grid for this page
         const pageGrid = document.createElement('div');
-        pageGrid.className = 'grid grid-cols-7 min-w-[1400px]';
+        pageGrid.className = 'calendar-grid';
         
         // Add headers to each page
         headerCells.forEach(header => {

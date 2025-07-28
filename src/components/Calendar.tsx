@@ -304,8 +304,8 @@ export default function Calendar() {
 
         <DataManager isAdmin={isAdmin} />
 
-        <div id="calendar-container" className="overflow-x-auto bg-white rounded-lg shadow-md">
-          <div className="grid grid-cols-7 min-w-[1400px]">
+        <div id="calendar-container" className="bg-white rounded-lg shadow-md">
+          <div className="calendar-grid">
             {DAYS.map(day => <div key={day} className="p-2 text-center font-bold text-gray-600 bg-gray-200 border-l border-gray-300">{day}</div>)}
             {schedule.days.map(day => (
               <CalendarDay 
