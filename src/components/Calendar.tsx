@@ -326,6 +326,7 @@ export default function Calendar() {
                 isEditMode={isEditMode} 
                 editBuffer={editBuffer}
                 onEditBufferChange={handleEditBufferChange}
+                isAdmin={isAdmin}
               />
             ))}
           </div>
@@ -425,7 +426,7 @@ function Alerts({ schedule, weeklyHourSummaries }: { schedule: MonthSchedule, we
   )
 }
 
-function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day: DaySchedule, isEditMode: boolean, editBuffer: any, onEditBufferChange: any }) {
+function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, isAdmin }: { day: DaySchedule, isEditMode: boolean, editBuffer: any, onEditBufferChange: any, isAdmin: boolean }) {
   const dayKey = format(day.date, 'yyyy-MM-dd');
   return (
     <div className={`border-t border-r border-gray-200 p-2 min-h-[200px] ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'} ${day.isHoliday ? 'bg-red-50' : ''}`}>
@@ -442,6 +443,7 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day:
             isEditMode={isEditMode}
             editValue={editBuffer[dayKey]?.[staff.id]}
             onEditChange={(value) => onEditBufferChange(dayKey, staff.id, value)}
+            isAdmin={isAdmin}
           />
         ))}
         {(day.replacementShifts || []).map(rep => (
@@ -452,7 +454,7 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day:
   );
 }
 
-function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff: StaffMember, day: DaySchedule, isEditMode: boolean, editValue: string, onEditChange: (value: string) => void}) {
+function StaffCard({ staff, day, isEditMode, editValue, onEditChange, isAdmin }: { staff: StaffMember, day: DaySchedule, isEditMode: boolean, editValue: string, onEditChange: (value: string) => void, isAdmin: boolean}) {
   const staffShift = day.staffShifts[staff.id];
   const colorTheme = STAFF_COLORS[staff.id];
   return (
@@ -461,13 +463,13 @@ function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff:
       {isEditMode ? (
         <ShiftDropdown value={editValue} onChange={onEditChange} />
       ) : (
-        <ShiftDisplay staffShift={staffShift} />
+        <ShiftDisplay staffShift={staffShift} isAdmin={isAdmin} />
       )}
     </div>
   );
 }
 
-function ShiftDisplay({ staffShift }: { staffShift: DaySchedule['staffShifts'][string] }) {
+function ShiftDisplay({ staffShift, isAdmin }: { staffShift: DaySchedule['staffShifts'][string], isAdmin: boolean }) {
   if (staffShift.isLeave) return <div className="font-bold text-orange-600">{staffShift.leaveType}</div>;
   if (!staffShift.shift) return <div className="text-gray-500">Off</div>;
   
@@ -476,7 +478,7 @@ function ShiftDisplay({ staffShift }: { staffShift: DaySchedule['staffShifts'][s
     <div className="flex items-center justify-between font-mono opacity-90">
       <div className="flex items-center gap-1"><Clock size={12} /> {shift.startTime} <ArrowRight size={12} /> {shift.endTime}</div>
       <div className="font-bold">({shift.workHours}h)</div>
-      {staffShift.isOverride && <span title="Manually Overridden"><Edit size={12} className="text-blue-600"/></span>}
+      {staffShift.isOverride && isAdmin && <span title="Manually Overridden"><Edit size={12} className="text-blue-600"/></span>}
     </div>
   );
 }
