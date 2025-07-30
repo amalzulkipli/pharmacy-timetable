@@ -89,8 +89,18 @@ export default function Calendar() {
       STAFF_MEMBERS.forEach(staff => {
         const { shift, isLeave, leaveType } = day.staffShifts[staff.id];
         let key = 'off';
-        if (isLeave) key = `leave_${leaveType?.toLowerCase()}`;
-        else if (shift) key = Object.keys(SHIFT_DEFINITIONS).find(k => SHIFT_DEFINITIONS[k] === shift) || 'off';
+        if (isLeave) {
+          key = `leave_${leaveType?.toLowerCase()}`;
+        } else if (shift) {
+          // FIX: Use content-based comparison instead of reference comparison
+          // Compare shift properties to find matching SHIFT_DEFINITIONS key
+          key = Object.keys(SHIFT_DEFINITIONS).find(k => {
+            const def = SHIFT_DEFINITIONS[k];
+            return def.startTime === shift.startTime && 
+                   def.endTime === shift.endTime && 
+                   def.workHours === shift.workHours;
+          }) || 'off';
+        }
         buffer[dayKey][staff.id] = key;
       });
     });
