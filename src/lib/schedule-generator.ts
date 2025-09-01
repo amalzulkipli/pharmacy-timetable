@@ -19,6 +19,7 @@ export const PUBLIC_HOLIDAYS_2025: PublicHoliday[] = [
   { date: '2025-06-08', name: 'Hari raya Haji Day 2 (*ganti Maulidur Rasul)' },
   { date: '2025-06-27', name: 'Awal Muharam' },
   { date: '2025-08-31', name: 'Merdeka Day' },
+  { date: '2025-09-06', name: 'Cuti AM (*Ganti Cuti PMX Bagi)' },
   { date: '2025-09-16', name: 'Hari Malaysia' },
   { date: '2025-12-11', name: 'Sultan Selangor\'s Birthday' },
 ];
@@ -173,6 +174,37 @@ export function getWeeklyHourSummaries(schedule: MonthSchedule): WeeklyHourSumma
   });
 
   return summaries;
+}
+
+export function getMonthlyHourTotals(schedule: MonthSchedule): { [staffId: string]: { totalActual: number; totalTarget: number; isUnderTarget: boolean } } {
+  const weeklyHours = calculateWeeklyHours(schedule.days);
+  const totals: { [staffId: string]: { totalActual: number; totalTarget: number; isUnderTarget: boolean } } = {};
+
+  // Get relevant weeks for the current month
+  const relevantWeeks = new Set(schedule.days.filter(d => d.isCurrentMonth).map(d => getISOWeek(d.date)));
+  const numberOfWeeks = relevantWeeks.size;
+
+  // Calculate totals for permanent staff only
+  STAFF_MEMBERS.forEach(staff => {
+    const staffWeeks = weeklyHours[staff.id] || {};
+    let totalActual = 0;
+    
+    // Sum up actual hours across all weeks
+    relevantWeeks.forEach(week => {
+      totalActual += staffWeeks[week] || 0;
+    });
+    
+    // Calculate target hours for the month (weekly target * number of weeks)
+    const totalTarget = staff.weeklyHours * numberOfWeeks;
+    
+    totals[staff.id] = {
+      totalActual,
+      totalTarget,
+      isUnderTarget: totalActual < totalTarget,
+    };
+  });
+
+  return totals;
 }
 
 export function exportToCSV(schedule: MonthSchedule): string {

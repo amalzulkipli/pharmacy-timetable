@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { generateMonthSchedule, getWeeklyHourSummaries, exportToCSV } from '../lib/schedule-generator';
+import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS } from '../staff-data';
-import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
+import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, WeeklyHourSummary } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Calendar as CalendarIcon, Edit, Save, X, Clock, ArrowRight, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -304,6 +304,7 @@ export default function Calendar() {
   // --- Memoized Calculations for Performance ---
   const weeklyHourSummaries = useMemo(() => schedule ? getWeeklyHourSummaries(schedule) : [], [schedule]);
   const allReplacementShifts = useMemo(() => schedule ? schedule.days.flatMap(d => (d.replacementShifts || []).map(r => ({...r, date: d.date}))) : [], [schedule]);
+  const monthlyHourTotals = useMemo(() => schedule ? getMonthlyHourTotals(schedule) : {}, [schedule]);
 
   if (!schedule) return <div className="p-8 text-center">Loading Schedule...</div>;
 
@@ -342,7 +343,7 @@ export default function Calendar() {
           </div>
         </div>
         
-        <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} />
+        <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} monthlyHourTotals={monthlyHourTotals} />
 
         {isReplacementModalOpen && (
           <ReplacementModal 
@@ -577,7 +578,11 @@ function ReplacementCard({ replacement }: { replacement: ReplacementShift }) {
   )
 }
 
-function Summaries({ weeklyHourSummaries, replacementShifts }: { weeklyHourSummaries: any[], replacementShifts: any[] }) {
+function Summaries({ weeklyHourSummaries, replacementShifts, monthlyHourTotals }: { 
+  weeklyHourSummaries: WeeklyHourSummary[], 
+  replacementShifts: (ReplacementShift & { date: Date })[], 
+  monthlyHourTotals: { [staffId: string]: { totalActual: number; totalTarget: number; isUnderTarget: boolean } } 
+}) {
   return (
     <div className="mt-4 space-y-4">
       <div className="bg-white rounded-lg shadow-md p-4">
@@ -589,6 +594,24 @@ function Summaries({ weeklyHourSummaries, replacementShifts }: { weeklyHourSumma
             </div>
           ))}
         </div>
+        
+        {/* Monthly Totals Row */}
+        {Object.keys(monthlyHourTotals).length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <h4 className="text-md font-semibold mb-2 text-gray-700">Monthly Totals</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {Object.entries(monthlyHourTotals).map(([staffId, totals]) => {
+                const staff = STAFF_MEMBERS.find(s => s.id === staffId);
+                if (!staff) return null; // Skip if not a permanent staff member
+                return (
+                  <div key={staffId} className={`text-sm p-2 rounded-md ${totals.isUnderTarget ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                    <span className="font-bold">{staff.name}:</span> <span className="font-mono">{totals.totalActual}h / {totals.totalTarget}h</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {replacementShifts.length > 0 && (
