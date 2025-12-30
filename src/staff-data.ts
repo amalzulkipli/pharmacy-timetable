@@ -2,7 +2,7 @@ import type { StaffMember, ShiftDefinition, ShiftPattern } from "@/types/schedul
 
 export const STAFF_COLORS: { [key: string]: { bg: string; text: string; border: string } } = {
   fatimah: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-400' },
-  mathilda: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-400' },
+  siti: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-400' },
   pah: { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-400' },
   amal: { bg: 'bg-pink-50', text: 'text-pink-800', border: 'border-pink-400' },
 };
@@ -16,8 +16,8 @@ export const STAFF_MEMBERS: StaffMember[] = [
     defaultOffDays: [0, 6], // Saturday, Sunday
   },
   {
-    id: "mathilda",
-    name: "Mathilda",
+    id: "siti",
+    name: "Siti",
     role: "Assistant Pharmacist",
     weeklyHours: 45,
     defaultOffDays: [1, 2], // Monday, Tuesday
@@ -103,7 +103,7 @@ const PATTERN_0: ShiftPattern = {
       6: null, // Saturday (off)
       0: null, // Sunday (off)
     },
-    mathilda: {
+    siti: {
       1: null, // Monday (off)
       2: null, // Tuesday (off)
       3: SHIFT_DEFINITIONS["11h"], // Wednesday
@@ -146,7 +146,7 @@ const PATTERN_1: ShiftPattern = {
       6: null, // Saturday (off)
       0: null, // Sunday (off)
     },
-    mathilda: {
+    siti: {
       1: null, // Monday (off)
       2: null, // Tuesday (off)
       3: SHIFT_DEFINITIONS["9h_late"], // Wednesday

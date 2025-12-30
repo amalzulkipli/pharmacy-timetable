@@ -211,7 +211,7 @@ export function exportToCSV(schedule: MonthSchedule): string {
   const lines: string[] = [];
   
   // Header
-  lines.push('Day,Month,Date,,Fatimah,Staff Mathilda,Staff Pah,Ph Amal,Note');
+  lines.push('Day,Month,Date,,Fatimah,Staff Siti,Staff Pah,Ph Amal,Note');
   
   schedule.days.forEach(day => {
     if (!day.isCurrentMonth) return; // Only export current month days
