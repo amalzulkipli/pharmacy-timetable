@@ -55,8 +55,8 @@ const BAR_COLORS: { [key: string]: string } = {
 // ================================================================================================
 export default function Calendar() {
   const { isAdmin } = useAuth();
-  const [selectedMonth, setSelectedMonth] = useState(7);
-  const [selectedYear, setSelectedYear] = useState(2025);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<MonthSchedule | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBuffer, setEditBuffer] = useState<Record<string, Record<string, string>>>({});

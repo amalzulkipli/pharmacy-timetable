@@ -8,8 +8,9 @@ import type {
 } from '../types/schedule';
 import { startOfMonth, endOfMonth, eachDayOfInterval, getDay, format, startOfWeek, endOfWeek, getISOWeek } from 'date-fns';
 
-// Company public holidays for 2025
-export const PUBLIC_HOLIDAYS_2025: PublicHoliday[] = [
+// Company public holidays
+export const PUBLIC_HOLIDAYS: PublicHoliday[] = [
+  // 2025
   { date: '2025-03-31', name: 'Raya Puasa 1' },
   { date: '2025-04-01', name: 'Raya Puasa 2' },
   { date: '2025-04-02', name: 'Raya Puasa 3 (*ganti Nuzul Quran)' },
@@ -22,6 +23,18 @@ export const PUBLIC_HOLIDAYS_2025: PublicHoliday[] = [
   { date: '2025-09-06', name: 'Cuti AM (*Ganti Cuti PMX Bagi)' },
   { date: '2025-09-16', name: 'Hari Malaysia' },
   { date: '2025-12-11', name: 'Sultan Selangor\'s Birthday' },
+  // 2026
+  { date: '2026-03-21', name: 'Hari Raya Aidilfitri' },
+  { date: '2026-03-22', name: 'Hari Raya Aidilfitri' },
+  { date: '2026-03-23', name: 'Hari Raya Aidilfitri' },
+  { date: '2026-05-01', name: 'Labour Day' },
+  { date: '2026-05-27', name: 'Hari Raya Aidiladha (Haji)' },
+  { date: '2026-05-28', name: 'Hari Raya Aidiladha (Haji)' },
+  { date: '2026-06-01', name: 'Agong\'s Birthday' },
+  { date: '2026-06-17', name: 'Awal Muharram (Maal Hijrah)' },
+  { date: '2026-08-31', name: 'National Day (Merdeka)' },
+  { date: '2026-09-16', name: 'Malaysia Day' },
+  { date: '2026-12-11', name: 'Sultan of Selangor\'s Birthday' },
 ];
 
 function getPatternForWeek(isoWeek: number): number {
@@ -31,7 +44,7 @@ function getPatternForWeek(isoWeek: number): number {
 
 function isHoliday(date: Date): { isHoliday: boolean; holidayName?: string } {
   const dateStr = format(date, 'yyyy-MM-dd');
-  const holiday = PUBLIC_HOLIDAYS_2025.find(h => h.date === dateStr);
+  const holiday = PUBLIC_HOLIDAYS.find(h => h.date === dateStr);
   return {
     isHoliday: !!holiday,
     holidayName: holiday?.name
