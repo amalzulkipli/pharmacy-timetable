@@ -475,7 +475,7 @@ function Alerts({ schedule, weeklyHourSummaries }: { schedule: MonthSchedule, we
 function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day: DaySchedule, isEditMode: boolean, editBuffer: any, onEditBufferChange: any }) {
   const dayKey = format(day.date, 'yyyy-MM-dd');
   return (
-    <div className={`border-t border-r border-gray-200 p-2 min-h-[200px] ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'} ${day.isHoliday ? 'bg-red-50' : ''}`}>
+    <div className={`border-t border-r border-gray-200 p-2 min-h-[200px] ${day.isHoliday ? 'bg-red-100' : day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}`}>
       <div className="flex justify-between items-center mb-2">
         <span className={`font-semibold text-sm ${!day.isCurrentMonth ? 'text-gray-400' : 'text-gray-800'}`}>{format(day.date, 'd')}</span>
         {day.isHoliday ? (
