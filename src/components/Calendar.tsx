@@ -517,12 +517,32 @@ function StaffCard({ staff, day, isEditMode, editValue, onEditChange, isAdmin }:
 }
 
 function ShiftDisplay({ staffShift, isAdmin, staffId }: { staffShift: DaySchedule['staffShifts'][string], isAdmin: boolean, staffId: string }) {
-  if (staffShift.isLeave) return <div className="font-bold text-orange-600">{staffShift.leaveType}</div>;
-  if (!staffShift.shift) return <div className="text-gray-500">Off</div>;
-
   const { shift } = staffShift;
   const barColor = BAR_COLORS[staffId] || 'bg-gray-500';
 
+  // Leave state
+  if (staffShift.isLeave) {
+    return (
+      <div>
+        <div className="font-bold text-orange-600">{staffShift.leaveType}</div>
+        {/* Empty placeholder for consistent height */}
+        <div className="mt-1 h-1.5" />
+      </div>
+    );
+  }
+
+  // Off state
+  if (!shift) {
+    return (
+      <div>
+        <div className="text-gray-500">Off</div>
+        {/* Empty placeholder for consistent height */}
+        <div className="mt-1 h-1.5" />
+      </div>
+    );
+  }
+
+  // Working shift
   return (
     <div>
       {/* Time text row */}
