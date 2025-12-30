@@ -5,7 +5,7 @@ import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, ex
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, WeeklyHourSummary } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Calendar as CalendarIcon, Edit, Save, X, Clock, ArrowRight, UserPlus } from 'lucide-react';
+import { Download, Calendar as CalendarIcon, Edit, Save, X, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverrides } from '../hooks/useLocalStorage';
 import DataManager from './DataManager';
@@ -13,6 +13,42 @@ import DataManager from './DataManager';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// ================================================================================================
+// Timeline Bar Helper Functions
+// ================================================================================================
+
+// Convert time string "HH:MM" to minutes since midnight
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// Constants for timeline range (09:15 to 21:45 = pharmacy operating hours)
+const TIMELINE_START = timeToMinutes('09:15'); // 555 minutes
+const TIMELINE_END = timeToMinutes('21:45');   // 1305 minutes
+const TIMELINE_DURATION = TIMELINE_END - TIMELINE_START; // 750 minutes
+
+// Calculate bar start position as percentage
+function calculateBarStart(startTime: string): number {
+  const startMinutes = timeToMinutes(startTime);
+  return Math.max(0, ((startMinutes - TIMELINE_START) / TIMELINE_DURATION) * 100);
+}
+
+// Calculate bar width as percentage
+function calculateBarWidth(startTime: string, endTime: string): number {
+  const startMinutes = Math.max(timeToMinutes(startTime), TIMELINE_START);
+  const endMinutes = Math.min(timeToMinutes(endTime), TIMELINE_END);
+  return Math.max(0, ((endMinutes - startMinutes) / TIMELINE_DURATION) * 100);
+}
+
+// Solid bar colors for timeline (more vibrant than card backgrounds)
+const BAR_COLORS: { [key: string]: string } = {
+  fatimah: 'bg-blue-500',    // Blue bar (matches card theme)
+  siti: 'bg-green-500',      // Green bar
+  pah: 'bg-purple-500',      // Purple bar
+  amal: 'bg-pink-500',       // Pink bar
+};
 
 // ================================================================================================
 // Main Calendar Component
@@ -474,22 +510,39 @@ function StaffCard({ staff, day, isEditMode, editValue, onEditChange, isAdmin }:
       {isEditMode ? (
         <ShiftDropdown value={editValue} onChange={onEditChange} />
       ) : (
-        <ShiftDisplay staffShift={staffShift} isAdmin={isAdmin} />
+        <ShiftDisplay staffShift={staffShift} isAdmin={isAdmin} staffId={staff.id} />
       )}
     </div>
   );
 }
 
-function ShiftDisplay({ staffShift, isAdmin }: { staffShift: DaySchedule['staffShifts'][string], isAdmin: boolean }) {
+function ShiftDisplay({ staffShift, isAdmin, staffId }: { staffShift: DaySchedule['staffShifts'][string], isAdmin: boolean, staffId: string }) {
   if (staffShift.isLeave) return <div className="font-bold text-orange-600">{staffShift.leaveType}</div>;
   if (!staffShift.shift) return <div className="text-gray-500">Off</div>;
-  
+
   const { shift } = staffShift;
+  const barColor = BAR_COLORS[staffId] || 'bg-gray-500';
+
   return (
-    <div className="flex items-center justify-between font-mono opacity-90">
-      <div className="flex items-center gap-1"><Clock size={12} /> {shift.startTime} <ArrowRight size={12} /> {shift.endTime}</div>
-      <div className="font-bold">({shift.workHours}h)</div>
-      {staffShift.isOverride && isAdmin && <span title="Manually Overridden"><Edit size={12} className="text-blue-600"/></span>}
+    <div>
+      {/* Time text row */}
+      <div className="flex items-center justify-between font-mono opacity-90">
+        <span>{shift.startTime}-{shift.endTime}</span>
+        <div className="flex items-center gap-1">
+          <span className="font-bold">({shift.workHours}h)</span>
+          {staffShift.isOverride && isAdmin && <span title="Manually Overridden"><Edit size={12} className="text-blue-600"/></span>}
+        </div>
+      </div>
+      {/* Timeline bar */}
+      <div className="mt-1 h-1.5 bg-gray-200 rounded-full relative overflow-hidden">
+        <div
+          className={`absolute h-full rounded-full ${barColor}`}
+          style={{
+            left: `${calculateBarStart(shift.startTime)}%`,
+            width: `${calculateBarWidth(shift.startTime, shift.endTime)}%`
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -567,12 +620,25 @@ function ReplacementCard({ replacement }: { replacement: ReplacementShift }) {
   return (
     <div className="bg-gray-200 border-l-4 border-gray-400 rounded-md p-2 text-xs text-gray-700">
       <div className="font-bold flex justify-between">
-        <span>{replacement.tempStaffName}</span> 
+        <span>{replacement.tempStaffName}</span>
         <span className="text-gray-500 italic">Temp</span>
       </div>
-      <div className="flex items-center justify-between font-mono opacity-90">
-        <div className="flex items-center gap-1"><Clock size={12} /> {replacement.startTime} <ArrowRight size={12} /> {replacement.endTime}</div>
-        <div className="font-bold">({replacement.workHours}h)</div>
+      <div>
+        {/* Time text row */}
+        <div className="flex items-center justify-between font-mono opacity-90">
+          <span>{replacement.startTime}-{replacement.endTime}</span>
+          <span className="font-bold">({replacement.workHours}h)</span>
+        </div>
+        {/* Timeline bar */}
+        <div className="mt-1 h-1.5 bg-gray-300 rounded-full relative overflow-hidden">
+          <div
+            className="absolute h-full rounded-full bg-gray-500"
+            style={{
+              left: `${calculateBarStart(replacement.startTime)}%`,
+              width: `${calculateBarWidth(replacement.startTime, replacement.endTime)}%`
+            }}
+          />
+        </div>
       </div>
     </div>
   )
