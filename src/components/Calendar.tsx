@@ -367,13 +367,12 @@ export default function Calendar() {
           <div className="calendar-grid">
             {DAYS.map(day => <div key={day} className="p-2 text-center font-bold text-gray-600 bg-gray-200 border-l border-gray-300">{day}</div>)}
             {schedule.days.map(day => (
-              <CalendarDay 
-                key={format(day.date, 'yyyy-MM-dd')} 
-                day={day} 
-                isEditMode={isEditMode} 
+              <CalendarDay
+                key={format(day.date, 'yyyy-MM-dd')}
+                day={day}
+                isEditMode={isEditMode}
                 editBuffer={editBuffer}
                 onEditBufferChange={handleEditBufferChange}
-                isAdmin={isAdmin}
               />
             ))}
           </div>
@@ -473,7 +472,7 @@ function Alerts({ schedule, weeklyHourSummaries }: { schedule: MonthSchedule, we
   )
 }
 
-function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, isAdmin }: { day: DaySchedule, isEditMode: boolean, editBuffer: any, onEditBufferChange: any, isAdmin: boolean }) {
+function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day: DaySchedule, isEditMode: boolean, editBuffer: any, onEditBufferChange: any }) {
   const dayKey = format(day.date, 'yyyy-MM-dd');
   return (
     <div className={`border-t border-r border-gray-200 p-2 min-h-[200px] ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'} ${day.isHoliday ? 'bg-red-50' : ''}`}>
@@ -483,14 +482,13 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, isAdmin 
       </div>
       <div className="space-y-2">
         {STAFF_MEMBERS.map(staff => (
-          <StaffCard 
-            key={staff.id} 
-            staff={staff} 
+          <StaffCard
+            key={staff.id}
+            staff={staff}
             day={day}
             isEditMode={isEditMode}
             editValue={editBuffer[dayKey]?.[staff.id]}
             onEditChange={(value) => onEditBufferChange(dayKey, staff.id, value)}
-            isAdmin={isAdmin}
           />
         ))}
         {(day.replacementShifts || []).map(rep => (
@@ -501,22 +499,22 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, isAdmin 
   );
 }
 
-function StaffCard({ staff, day, isEditMode, editValue, onEditChange, isAdmin }: { staff: StaffMember, day: DaySchedule, isEditMode: boolean, editValue: string, onEditChange: (value: string) => void, isAdmin: boolean}) {
+function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff: StaffMember, day: DaySchedule, isEditMode: boolean, editValue: string, onEditChange: (value: string) => void }) {
   const staffShift = day.staffShifts[staff.id];
   const colorTheme = STAFF_COLORS[staff.id];
   return (
-    <div className={`${colorTheme.bg} ${colorTheme.text} ${colorTheme.border} border-l-4 rounded-md p-2 text-xs`}>
+    <div className={`${colorTheme.bg} ${colorTheme.text} rounded-md p-2 text-xs`}>
       <div className="font-bold mb-1">{staff.name}</div>
       {isEditMode ? (
         <ShiftDropdown value={editValue} onChange={onEditChange} />
       ) : (
-        <ShiftDisplay staffShift={staffShift} isAdmin={isAdmin} staffId={staff.id} />
+        <ShiftDisplay staffShift={staffShift} staffId={staff.id} />
       )}
     </div>
   );
 }
 
-function ShiftDisplay({ staffShift, isAdmin, staffId }: { staffShift: DaySchedule['staffShifts'][string], isAdmin: boolean, staffId: string }) {
+function ShiftDisplay({ staffShift, staffId }: { staffShift: DaySchedule['staffShifts'][string], staffId: string }) {
   const { shift } = staffShift;
   const barColor = BAR_COLORS[staffId] || 'bg-gray-500';
 
@@ -548,10 +546,7 @@ function ShiftDisplay({ staffShift, isAdmin, staffId }: { staffShift: DaySchedul
       {/* Time text row */}
       <div className="flex items-center justify-between font-mono opacity-90">
         <span>{shift.startTime}-{shift.endTime}</span>
-        <div className="flex items-center gap-1">
-          <span className="font-bold">({shift.workHours}h)</span>
-          {staffShift.isOverride && isAdmin && <span title="Manually Overridden"><Edit size={12} className="text-blue-600"/></span>}
-        </div>
+        <span className="font-bold">({shift.workHours}h)</span>
       </div>
       {/* Timeline bar */}
       <div className="mt-1 h-1.5 bg-gray-200 rounded-full relative overflow-hidden">
