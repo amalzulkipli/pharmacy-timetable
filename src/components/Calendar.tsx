@@ -478,7 +478,11 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day:
     <div className={`border-t border-r border-gray-200 p-2 min-h-[200px] ${day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'} ${day.isHoliday ? 'bg-red-50' : ''}`}>
       <div className="flex justify-between items-center mb-2">
         <span className={`font-semibold text-sm ${!day.isCurrentMonth ? 'text-gray-400' : 'text-gray-800'}`}>{format(day.date, 'd')}</span>
-        <span className="text-xs text-gray-500">W{getISOWeek(day.date)}</span>
+        {day.isHoliday ? (
+          <span className="text-xs text-red-600 font-medium truncate max-w-[80px]" title={day.holidayName}>{day.holidayName}</span>
+        ) : (
+          <span className="text-xs text-gray-500">W{getISOWeek(day.date)}</span>
+        )}
       </div>
       <div className="space-y-2">
         {STAFF_MEMBERS.map(staff => (
