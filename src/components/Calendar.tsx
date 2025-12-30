@@ -359,7 +359,7 @@ export default function Calendar() {
           onDownloadPDF={handleDownloadPDF}
         />
         
-        <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} />
+        <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} isAdmin={isAdmin} />
 
         <DataManager isAdmin={isAdmin} />
 
@@ -458,7 +458,9 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   );
 }
 
-function Alerts({ schedule, weeklyHourSummaries }: { schedule: MonthSchedule, weeklyHourSummaries: any[] }) {
+function Alerts({ schedule, weeklyHourSummaries, isAdmin }: { schedule: MonthSchedule, weeklyHourSummaries: any[], isAdmin: boolean }) {
+  if (!isAdmin) return null;
+
   const holidayAlerts = schedule.days.filter(d => d.isHoliday && d.isCurrentMonth);
   const hourWarnings = weeklyHourSummaries.filter(s => s.isUnderTarget);
 
