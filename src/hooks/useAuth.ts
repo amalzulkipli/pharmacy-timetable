@@ -10,6 +10,9 @@ interface UseAuthReturn {
   login: (password: string) => boolean;
   logout: () => void;
   switchToPublic: () => void;
+  showLoginModal: boolean;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
 }
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'Alde1234'; // Fallback for development
@@ -17,6 +20,7 @@ const AUTH_STORAGE_KEY = 'pharmacy-auth-mode';
 
 export function useAuth(): UseAuthReturn {
   const [authMode, setAuthMode] = useState<AuthMode>('public');
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Initialize auth state from sessionStorage on mount
   useEffect(() => {
@@ -54,11 +58,17 @@ export function useAuth(): UseAuthReturn {
     setAuthMode('public');
   };
 
+  const openLoginModal = () => setShowLoginModal(true);
+  const closeLoginModal = () => setShowLoginModal(false);
+
   return {
     authMode,
     isAdmin: authMode === 'admin',
     login,
     logout,
     switchToPublic,
+    showLoginModal,
+    openLoginModal,
+    closeLoginModal,
   };
 }

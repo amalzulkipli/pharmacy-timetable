@@ -9,6 +9,9 @@ interface AuthContextType {
   login: (password: string) => boolean;
   logout: () => void;
   switchToPublic: () => void;
+  showLoginModal: boolean;
+  openLoginModal: () => void;
+  closeLoginModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

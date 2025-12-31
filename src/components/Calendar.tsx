@@ -5,7 +5,7 @@ import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, ex
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, WeeklyHourSummary } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Calendar as CalendarIcon, Edit, Save, X, UserPlus } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, User, LogOut, Eye } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverrides } from '../hooks/useLocalStorage';
 import DataManager from './DataManager';
@@ -67,7 +67,29 @@ export default function Calendar() {
   const [isReplacementModalOpen, setReplacementModalOpen] = useState(false);
   const [replacementContext, setReplacementContext] = useState<{ dayKey: string; staffId: string } | null>(null);
 
+  // --- Navigation Handlers ---
+  const handlePrevMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
 
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  };
+
+  const handleToday = () => {
+    setSelectedMonth(new Date().getMonth() + 1);
+    setSelectedYear(new Date().getFullYear());
+  };
 
   // --- Core Logic ---
   useEffect(() => {
@@ -357,6 +379,9 @@ export default function Calendar() {
           onCancelEdit={() => setIsEditMode(false)}
           onDownloadCSV={handleDownloadCSV}
           onDownloadPDF={handleDownloadPDF}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          onToday={handleToday}
         />
 
         <div id="calendar-container" className="bg-white rounded-lg shadow-md">
@@ -396,7 +421,7 @@ export default function Calendar() {
 // Sub-Components for a Cleaner Structure
 // ================================================================================================
 
-function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF }: {
+function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday }: {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
@@ -408,48 +433,87 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   onCancelEdit: () => void;
   onDownloadCSV: () => void;
   onDownloadPDF: () => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onToday: () => void;
 }) {
+  const { logout, switchToPublic, openLoginModal } = useAuth();
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><CalendarIcon className="text-blue-600"/> Pharmacy Timetable</h1>
-        <div className="flex items-center gap-3">
-          <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))} className="bg-gray-50 border-gray-300 text-gray-900 rounded-md px-3 py-2 font-semibold hover:bg-gray-100 focus:ring-2 focus:ring-blue-500">
+    <div className="mb-6">
+      {/* Row 1: Title */}
+      <div className="mb-5">
+        <h1 className="text-[28px] font-bold text-[#37352f] tracking-tight">Alde ST Timetable</h1>
+      </div>
+
+      {/* Row 2: Month/Year and Navigation */}
+      <div className="flex items-center justify-between">
+        {/* Left: Month/Year */}
+        <div className="flex items-center">
+          <select
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(Number(e.target.value))}
+            className="text-[15px] font-medium text-[#37352f] bg-transparent border-none cursor-pointer hover:bg-[#f1f1ef] rounded px-2 py-1 -ml-2 focus:outline-none"
+          >
             {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
           </select>
-          <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className="bg-gray-50 border-gray-300 text-gray-900 rounded-md px-3 py-2 font-semibold hover:bg-gray-100 focus:ring-2 focus:ring-blue-500">
-            {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+          <select
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+            className="text-[15px] font-medium text-[#37352f] bg-transparent border-none cursor-pointer hover:bg-[#f1f1ef] rounded px-2 py-1 focus:outline-none"
+          >
+            {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
+
+        {/* Right: Navigation + Login/Admin buttons */}
         <div className="flex items-center gap-2">
+          {/* Navigation */}
+          <div className="inline-flex items-center">
+            <button
+              onClick={onPrevMonth}
+              className="p-1.5 text-[#91918e] hover:bg-[#f1f1ef] rounded transition-colors"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={onToday}
+              className="px-3 py-1 text-[#37352f] hover:bg-[#f1f1ef] rounded transition-colors text-[14px]"
+            >
+              Today
+            </button>
+            <button
+              onClick={onNextMonth}
+              className="p-1.5 text-[#91918e] hover:bg-[#f1f1ef] rounded transition-colors"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          {/* Login button (when not admin) */}
+          {!isAdmin && (
+            <button onClick={openLoginModal} className="p-1.5 text-[#91918e] hover:bg-[#f1f1ef] rounded transition-colors">
+              <User size={18} />
+            </button>
+          )}
+
+          {/* Admin buttons */}
           {isAdmin && (
             <>
+              <div className="w-px h-4 bg-[#e3e2e0] mx-1" />
               {isEditMode ? (
                 <>
-                  <button onClick={onSaveChanges} className="bg-green-600 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-green-700 transition-colors"><Save size={16}/> Save</button>
-                  <button onClick={onCancelEdit} className="bg-gray-500 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-600 transition-colors"><X size={16}/> Cancel</button>
+                  <button onClick={onSaveChanges} className="text-[14px] text-white bg-[#2383e2] hover:bg-[#0b6bcb] px-3 py-1 rounded transition-colors flex items-center gap-1.5"><Save size={14}/> Save</button>
+                  <button onClick={onCancelEdit} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-3 py-1 rounded transition-colors flex items-center gap-1"><X size={14}/> Cancel</button>
                 </>
               ) : (
-                <button onClick={onEnterEditMode} className="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-blue-700 transition-colors"><Edit size={16}/> Edit</button>
+                <button onClick={onEnterEditMode} className="text-[14px] text-white bg-[#2383e2] hover:bg-[#0b6bcb] px-3 py-1 rounded transition-colors flex items-center gap-1.5"><Edit size={14}/> Edit</button>
               )}
-              
-              {/* Download Buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={onDownloadCSV}
-                  className="bg-gray-700 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-800 transition-colors"
-                >
-                  <Download size={16} />
-                  CSV
-                </button>
-                <button
-                  onClick={onDownloadPDF}
-                  className="bg-gray-700 text-white px-4 py-2 rounded-md flex items-center gap-2 font-semibold hover:bg-gray-800 transition-colors"
-                >
-                  <Download size={16} />
-                  PDF
-                </button>
-              </div>
+              <button onClick={onDownloadCSV} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 py-1 rounded transition-colors"><Download size={14}/></button>
+              <button onClick={onDownloadPDF} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 py-1 rounded transition-colors">PDF</button>
+              <div className="w-px h-4 bg-[#e3e2e0] mx-1" />
+              <button onClick={switchToPublic} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 py-1 rounded transition-colors flex items-center gap-1"><Eye size={14}/></button>
+              <button onClick={logout} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 py-1 rounded transition-colors"><LogOut size={14}/></button>
             </>
           )}
         </div>
