@@ -440,10 +440,10 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   const { logout, openLoginModal } = useAuth();
 
   return (
-    <div className="mb-6">
-      {/* Row 1: Title */}
-      <div className="mb-5">
-        <h1 className="text-[28px] font-bold text-[#37352f] tracking-tight">Alde ST Timetable</h1>
+    <div className="mb-4">
+      {/* Row 1: Title in white card */}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+        <h1 className="text-[22px] font-bold text-[#37352f] tracking-tight">Alde ST Timetable</h1>
       </div>
 
       {/* Row 2: Month/Year and Navigation */}
