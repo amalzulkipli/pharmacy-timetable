@@ -5,7 +5,7 @@ import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, ex
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, WeeklyHourSummary } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, User, LogOut, Eye } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, User, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverrides } from '../hooks/useLocalStorage';
 import DataManager from './DataManager';
@@ -437,7 +437,7 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   onNextMonth: () => void;
   onToday: () => void;
 }) {
-  const { logout, switchToPublic, openLoginModal } = useAuth();
+  const { logout, openLoginModal } = useAuth();
 
   return (
     <div className="mb-6">
@@ -512,7 +512,6 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
               <button onClick={onDownloadCSV} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 py-1 rounded transition-colors"><Download size={14}/></button>
               <button onClick={onDownloadPDF} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 py-1 rounded transition-colors">PDF</button>
               <div className="w-px h-4 bg-[#e3e2e0] mx-1" />
-              <button onClick={switchToPublic} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 py-1 rounded transition-colors flex items-center gap-1"><Eye size={14}/></button>
               <button onClick={logout} className="text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 py-1 rounded transition-colors"><LogOut size={14}/></button>
             </>
           )}
