@@ -347,7 +347,7 @@ export default function Calendar() {
   return (
     <div className="min-h-screen bg-gray-100 p-4 font-sans">
       <div className="max-w-screen-2xl mx-auto">
-        <Header 
+        <Header
           selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth}
           selectedYear={selectedYear} setSelectedYear={setSelectedYear}
           isEditMode={isEditMode}
@@ -358,10 +358,6 @@ export default function Calendar() {
           onDownloadCSV={handleDownloadCSV}
           onDownloadPDF={handleDownloadPDF}
         />
-        
-        <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} isAdmin={isAdmin} />
-
-        <DataManager isAdmin={isAdmin} />
 
         <div id="calendar-container" className="bg-white rounded-lg shadow-md">
           <div className="calendar-grid">
@@ -377,8 +373,12 @@ export default function Calendar() {
             ))}
           </div>
         </div>
-        
+
         <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} monthlyHourTotals={monthlyHourTotals} />
+
+        <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} isAdmin={isAdmin} />
+
+        <DataManager isAdmin={isAdmin} />
 
         {isReplacementModalOpen && (
           <ReplacementModal 
@@ -467,7 +467,7 @@ function Alerts({ schedule, weeklyHourSummaries, isAdmin }: { schedule: MonthSch
   if (holidayAlerts.length === 0 && hourWarnings.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 mb-4">
       {hourWarnings.length > 0 && <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 rounded-md text-sm"><b>Hour Warnings:</b> {hourWarnings.map(w => `${w.staffName} (W${w.week}: ${w.actualHours}/${w.targetHours}h)`).join(', ')}</div>}
       {holidayAlerts.length > 0 && <div className="bg-red-100 border-l-4 border-red-500 text-red-800 p-3 rounded-md text-sm"><b>Holidays:</b> {holidayAlerts.map(h => `${format(h.date, 'MMM d')}: ${h.holidayName}`).join(', ')}</div>}
     </div>
