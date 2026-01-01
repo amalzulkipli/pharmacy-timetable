@@ -32,8 +32,8 @@ function AuthWrapperContent({ children }: AuthWrapperProps) {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-16 md:top-20 mx-auto p-4 md:p-5 border w-full max-w-sm shadow-lg rounded-md bg-white">
             <div className="mt-3 text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
                 <Lock className="h-6 w-6 text-blue-600" />

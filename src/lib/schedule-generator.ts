@@ -1,10 +1,10 @@
 import { STAFF_MEMBERS, SHIFT_PATTERNS } from '../staff-data';
-import type { 
-  MonthSchedule, 
-  DaySchedule, 
-  StaffMember, 
+import type {
+  MonthSchedule,
+  DaySchedule,
   PublicHoliday,
-  WeeklyHourSummary 
+  WeeklyHourSummary,
+  ShiftDefinition
 } from '../types/schedule';
 import { startOfMonth, endOfMonth, eachDayOfInterval, getDay, format, startOfWeek, endOfWeek, getISOWeek } from 'date-fns';
 
@@ -68,7 +68,7 @@ export function generateMonthSchedule(month: number, year: number): MonthSchedul
     const pattern = SHIFT_PATTERNS[patternIndex];
     const holidayInfo = isHoliday(date);
     
-    const staffShifts: { [staffId: string]: any } = {};
+    const staffShifts: { [staffId: string]: { shift: ShiftDefinition | null; isOverride: boolean; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' } } = {};
     
     STAFF_MEMBERS.forEach(staff => {
       if (holidayInfo.isHoliday) {

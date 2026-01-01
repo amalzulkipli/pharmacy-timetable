@@ -7,6 +7,14 @@ export const STAFF_COLORS: { [key: string]: { bg: string; text: string; border: 
   amal: { bg: 'bg-pink-50', text: 'text-pink-800', border: 'border-pink-400' },
 };
 
+// Avatar colors for mobile view (solid colors for circular avatars)
+export const AVATAR_COLORS: { [key: string]: { bg: string; badge: string } } = {
+  fatimah: { bg: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' },
+  siti: { bg: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600' },
+  pah: { bg: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600' },
+  amal: { bg: 'bg-red-400', badge: 'bg-red-100 text-red-700' },
+};
+
 export const STAFF_MEMBERS: StaffMember[] = [
   {
     id: "fatimah",

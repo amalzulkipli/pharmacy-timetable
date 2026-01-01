@@ -3,7 +3,7 @@ import puppeteer from 'puppeteer';
 
 export async function POST(request: NextRequest) {
   try {
-    const { html, title, filename } = await request.json();
+    const { html, filename } = await request.json();
 
     if (!html) {
       return NextResponse.json({ error: 'HTML content is required' }, { status: 400 });
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Add DOM manipulation to split calendar by weeks for multi-page PDF
-    const manipulationResult = await page.evaluate(() => {
+    await page.evaluate(() => {
       const calendar = document.querySelector('#calendar-container .calendar-grid');
       if (!calendar) return { error: 'Calendar not found' };
 

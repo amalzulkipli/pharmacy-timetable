@@ -37,6 +37,17 @@ body {
   background-color: #e5e7eb;
 }
 
+/* Mobile: 3-day view */
+@media (max-width: 767px) {
+  .calendar-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .calendar-grid.mobile-sun-only {
+    grid-template-columns: 1fr;
+  }
+}
+
 .staff-card {
   @apply bg-white p-2 rounded shadow-sm border;
 }
