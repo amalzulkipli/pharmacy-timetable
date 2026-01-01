@@ -19,10 +19,11 @@ The project uses TypeScript with strict mode enabled. Path aliases are configure
 ## Architecture
 
 ### Tech Stack
-- **Framework:** Next.js 15.3.4 (App Router)
+- **Framework:** Next.js 15.5+ (App Router)
 - **UI:** React 19, TypeScript, Tailwind CSS v4
 - **PDF Generation:** Puppeteer (server-side)
 - **Date Utilities:** date-fns
+- **Icons:** lucide-react
 
 ### Core System: Schedule Generation
 
@@ -77,6 +78,7 @@ Hardcoded in `src/lib/schedule-generator.ts` as `PUBLIC_HOLIDAYS_2025`. On publi
 - Handles CSV/PDF export functionality
 - Manages schedule overrides in localStorage
 - Displays weekly hour summaries and monthly totals
+- Includes responsive mobile view with `MobileStaffCard` subcomponent
 - Complex component with ~800+ lines handling UI, state, and export logic
 
 **`src/components/AuthWrapper.tsx`**
@@ -130,7 +132,7 @@ The system tracks weekly hours for each staff member to ensure compliance with c
 
 2. **Date Handling:** Uses date-fns extensively for date manipulation. Week starts on Monday (`weekStartsOn: 1`).
 
-3. **Color Coding:** Staff members have distinct colors defined in STAFF_COLORS (blue, green, purple, pink) for visual identification.
+3. **Color Coding:** Staff members have distinct colors defined in `STAFF_COLORS` (blue, green, purple, pink) for visual identification. Mobile views use `AVATAR_COLORS` for solid-colored circular avatars.
 
 4. **localStorage Keys:** Schedule overrides are stored with keys like `schedule-override-{month}-{year}`.
 

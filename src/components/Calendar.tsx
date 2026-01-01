@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS, AVATAR_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, WeeklyHourSummary } from '../types/schedule';
@@ -407,13 +407,6 @@ export default function Calendar() {
   const allReplacementShifts = useMemo(() => schedule ? schedule.days.flatMap(d => (d.replacementShifts || []).map(r => ({...r, date: d.date}))) : [], [schedule]);
   const monthlyHourTotals = useMemo(() => schedule ? getMonthlyHourTotals(schedule) : {}, [schedule]);
 
-  // Mobile: Get the current week's days based on selected day
-  const currentWeekDays = useMemo(() => {
-    if (!schedule || !isMobile) return [];
-    const weekStart = Math.floor(selectedDayIndex / 7) * 7;
-    return schedule.days.slice(weekStart, weekStart + 7);
-  }, [schedule, isMobile, selectedDayIndex]);
-
   // Mobile: Get current week number for display
   const currentWeekNumber = useMemo(() => {
     if (!schedule || !schedule.days[selectedDayIndex]) return 1;
@@ -456,7 +449,6 @@ export default function Calendar() {
         schedule={schedule}
         selectedDayIndex={selectedDayIndex}
         setSelectedDayIndex={setSelectedDayIndex}
-        currentWeekDays={currentWeekDays}
         currentWeekNumber={currentWeekNumber}
         selectedMonth={selectedMonth}
         setSelectedMonth={setSelectedMonth}
@@ -892,17 +884,14 @@ function Summaries({ weeklyHourSummaries, replacementShifts, monthlyHourTotals }
 // Helper function for shift labels
 function getShiftLabel(shift: ShiftDefinition | null): string {
   if (!shift) return 'Day Off';
-  const startHour = parseInt(shift.startTime.split(':')[0]);
-  if (startHour < 11) return 'Morning Shift';
-  if (startHour < 14) return 'Day Shift';
-  return 'Evening Shift';
+  if (shift.type === '11h') return 'Full Day Shift';
+  return shift.timing === 'early' ? 'Early Shift' : 'Late Shift';
 }
 
 interface MobileViewProps {
   schedule: MonthSchedule;
   selectedDayIndex: number;
   setSelectedDayIndex: (index: number) => void;
-  currentWeekDays: DaySchedule[];
   currentWeekNumber: number;
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
@@ -918,7 +907,6 @@ function MobileView({
   schedule,
   selectedDayIndex,
   setSelectedDayIndex,
-  currentWeekDays,
   currentWeekNumber,
   selectedMonth,
   setSelectedMonth,
@@ -933,14 +921,6 @@ function MobileView({
   const { openLoginModal } = useAuth();
 
   if (!selectedDay) return null;
-
-  // Calculate position within current week (0-6)
-  const dayInWeekIndex = selectedDayIndex % 7;
-
-  const handleDaySelect = (weekDayIndex: number) => {
-    const weekStart = Math.floor(selectedDayIndex / 7) * 7;
-    setSelectedDayIndex(weekStart + weekDayIndex);
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 pb-28 font-sans">
@@ -976,14 +956,12 @@ function MobileView({
         ))}
       </div>
 
-      {/* Floating Today Button */}
-      <MobileTodayButton onClick={onGoToToday} />
-
-      {/* Bottom Day Selector */}
+      {/* Bottom Day Selector with integrated TODAY button */}
       <MobileDaySelector
-        days={currentWeekDays}
-        selectedIndex={dayInWeekIndex}
-        onSelect={handleDaySelect}
+        days={schedule.days}
+        selectedIndex={selectedDayIndex}
+        onSelect={setSelectedDayIndex}
+        onGoToToday={onGoToToday}
       />
     </div>
   );
@@ -1065,7 +1043,7 @@ function MobileControls({
 
 function MobileDayHeader({ day, weekNumber }: { day: DaySchedule; weekNumber: number }) {
   return (
-    <div className="px-4 py-3 bg-white border-b border-gray-200">
+    <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-[#37352f]">
           {format(day.date, 'EEEE, MMM d')}
@@ -1126,7 +1104,10 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
           <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${BAR_COLORS[staff.id]}`}
-              style={{ width: `${(staffShift.shift.workHours / 11) * 100}%` }}
+              style={{
+                marginLeft: `${calculateBarStart(staffShift.shift.startTime)}%`,
+                width: `${calculateBarWidth(staffShift.shift.startTime, staffShift.shift.endTime)}%`
+              }}
             />
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
@@ -1195,48 +1176,76 @@ function MobileDaySelector({
   days,
   selectedIndex,
   onSelect,
+  onGoToToday,
 }: {
   days: DaySchedule[];
   selectedIndex: number;
   onSelect: (index: number) => void;
+  onGoToToday: () => void;
 }) {
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white px-3 py-3 border-t border-gray-200 shadow-lg">
-      <div className="flex gap-2 overflow-x-auto">
-        {days.map((day, idx) => {
-          const isSelected = idx === selectedIndex;
-          const isToday = format(day.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const selectedButtonRef = useRef<HTMLButtonElement>(null);
 
-          return (
-            <button
-              key={format(day.date, 'yyyy-MM-dd')}
-              onClick={() => onSelect(idx)}
-              className={`flex-shrink-0 w-14 py-2 rounded-xl text-center transition-colors ${
-                isSelected
-                  ? 'bg-blue-500 text-white'
-                  : isToday
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'bg-gray-100 text-[#37352f]'
-              }`}
-            >
-              <div className="text-xs font-medium">{format(day.date, 'EEE')}</div>
-              <div className="text-lg font-bold">{format(day.date, 'd')}</div>
-            </button>
-          );
-        })}
+  // Auto-scroll to selected date
+  useEffect(() => {
+    if (selectedButtonRef.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const button = selectedButtonRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+
+      // Calculate if button is out of view
+      const isOutOfView = buttonRect.left < containerRect.left || buttonRect.right > containerRect.right;
+
+      if (isOutOfView) {
+        button.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+  }, [selectedIndex]);
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+      <div className="flex items-center">
+        {/* Scrollable dates area */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-x-auto px-3 py-3 scrollbar-hide"
+        >
+          <div className="flex gap-1">
+            {days.map((day, idx) => {
+              const isSelected = idx === selectedIndex;
+
+              return (
+                <button
+                  key={format(day.date, 'yyyy-MM-dd')}
+                  ref={isSelected ? selectedButtonRef : null}
+                  onClick={() => onSelect(idx)}
+                  className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-colors ${
+                    isSelected
+                      ? 'bg-blue-500 text-white'
+                      : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-xs font-semibold uppercase">{format(day.date, 'EEE')}</span>
+                  <span className="text-xl font-bold">{format(day.date, 'd')}</span>
+                  {isSelected && <span className="w-1 h-1 bg-white rounded-full mt-0.5" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* TODAY button - fixed on right */}
+        <button
+          onClick={onGoToToday}
+          className="flex-shrink-0 flex flex-col items-center px-4 py-2 border-l border-gray-200 text-blue-500 hover:bg-gray-50 transition-colors"
+        >
+          <CalendarIcon size={20} />
+          <span className="text-xs font-semibold mt-1">TODAY</span>
+        </button>
       </div>
     </div>
   );
 }
 
-function MobileTodayButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="fixed bottom-20 right-4 bg-white shadow-lg rounded-full px-4 py-2.5 flex items-center gap-2 border border-gray-200 hover:bg-gray-50 transition-colors z-10"
-    >
-      <CalendarIcon size={18} className="text-blue-500" />
-      <span className="text-blue-500 font-medium">Today</span>
-    </button>
-  );
-} 
+ 
