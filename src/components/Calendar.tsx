@@ -1083,7 +1083,6 @@ function MobileDayHeader({ day, weekNumber }: { day: DaySchedule; weekNumber: nu
 
 function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift: DaySchedule['staffShifts'][string] }) {
   const avatarColors = AVATAR_COLORS[staff.id];
-  const cardColors = STAFF_COLORS[staff.id]; // Use same colors as desktop
   const initials = staff.name.substring(0, 2).toUpperCase();
   const isOff = !staffShift.shift && !staffShift.isLeave;
   const isLeave = staffShift.isLeave;
@@ -1097,11 +1096,11 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
 
   // Badge styling
   const badgeClasses = isOff || isLeave
-    ? 'bg-white/50 text-gray-600'
+    ? 'bg-gray-100 text-gray-600'
     : avatarColors.badge;
 
   return (
-    <div className={`${cardColors.bg} ${cardColors.text} rounded-xl p-4 shadow-sm`}>
+    <div className="bg-white rounded-xl p-4 shadow-sm">
       {/* Top section: Avatar + Info + Badge */}
       <div className="flex items-center gap-3">
         {/* Smaller Avatar with border/shadow */}
@@ -1111,8 +1110,8 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
 
         {/* Name and Shift Label */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold truncate">{staff.name}</h3>
-          <p className="text-sm opacity-70">{shiftLabel}</p>
+          <h3 className="font-bold text-gray-900 truncate">{staff.name}</h3>
+          <p className="text-sm text-gray-500">{shiftLabel}</p>
         </div>
 
         {/* Hours Badge - less rounded */}
@@ -1124,13 +1123,13 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
       {/* Progress Bar - full width, outside flex */}
       {staffShift.shift && (
         <>
-          <div className="mt-3 h-2 bg-white/30 rounded-full overflow-hidden">
+          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${BAR_COLORS[staff.id]}`}
               style={{ width: `${(staffShift.shift.workHours / 11) * 100}%` }}
             />
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-sm opacity-70">
+          <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
             <Clock size={14} />
             <span>{staffShift.shift.startTime} - {staffShift.shift.endTime}</span>
           </div>
@@ -1139,7 +1138,7 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
 
       {/* Not Scheduled (if off or leave) */}
       {(isOff || isLeave) && (
-        <div className="mt-2 flex items-center gap-1.5 text-sm opacity-60">
+        <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-400">
           <CalendarIcon size={14} />
           <span className="italic">{isLeave ? `On ${staffShift.leaveType} leave` : 'Not scheduled'}</span>
         </div>
