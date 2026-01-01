@@ -10,9 +10,9 @@ export const STAFF_COLORS: { [key: string]: { bg: string; text: string; border: 
 // Avatar colors for mobile view (solid colors for circular avatars)
 export const AVATAR_COLORS: { [key: string]: { bg: string; badge: string } } = {
   fatimah: { bg: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' },
-  siti: { bg: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600' },
-  pah: { bg: 'bg-gray-400', badge: 'bg-gray-100 text-gray-600' },
-  amal: { bg: 'bg-red-400', badge: 'bg-red-100 text-red-700' },
+  siti: { bg: 'bg-green-500', badge: 'bg-green-100 text-green-700' },
+  pah: { bg: 'bg-purple-500', badge: 'bg-purple-100 text-purple-700' },
+  amal: { bg: 'bg-pink-500', badge: 'bg-pink-100 text-pink-700' },
 };
 
 export const STAFF_MEMBERS: StaffMember[] = [
