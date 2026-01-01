@@ -72,6 +72,8 @@ export default function Calendar() {
   // --- Mobile View State ---
   const [isMobile, setIsMobile] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0); // Index within the current month's schedule
+  const [pendingPosition, setPendingPosition] = useState<'start' | 'end' | null>(null);
+  const [pendingDateToSelect, setPendingDateToSelect] = useState<Date | null>(null);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -80,7 +82,7 @@ export default function Calendar() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Jump to today's index when month changes or on initial load
+  // Handle pending navigation and default positioning when month changes
   useEffect(() => {
     if (!schedule) return;
     // Only update if the schedule matches the selected month/year
@@ -88,6 +90,33 @@ export default function Calendar() {
     if (!scheduleMonth) return;
     if (scheduleMonth.getMonth() + 1 !== selectedMonth || scheduleMonth.getFullYear() !== selectedYear) return;
 
+    // Handle pending date selection (from tapping adjacent month date)
+    if (pendingDateToSelect) {
+      const dateStr = format(pendingDateToSelect, 'yyyy-MM-dd');
+      const index = schedule.days.findIndex(d =>
+        format(d.date, 'yyyy-MM-dd') === dateStr
+      );
+      if (index >= 0) {
+        setSelectedDayIndex(index);
+      }
+      setPendingDateToSelect(null);
+      return;
+    }
+
+    // Handle pending position (from week navigation crossing boundary)
+    if (pendingPosition === 'end') {
+      const lastIndex = schedule.days.length - 1;
+      setSelectedDayIndex(lastIndex);
+      setPendingPosition(null);
+      return;
+    } else if (pendingPosition === 'start') {
+      const firstCurrentMonthIndex = schedule.days.findIndex(d => d.isCurrentMonth);
+      setSelectedDayIndex(firstCurrentMonthIndex >= 0 ? firstCurrentMonthIndex : 0);
+      setPendingPosition(null);
+      return;
+    }
+
+    // Default: Jump to today's index on initial load
     const today = new Date();
     const todayIndex = schedule.days.findIndex(d =>
       format(d.date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
@@ -99,7 +128,7 @@ export default function Calendar() {
       const firstCurrentMonthIndex = schedule.days.findIndex(d => d.isCurrentMonth);
       setSelectedDayIndex(firstCurrentMonthIndex >= 0 ? firstCurrentMonthIndex : 0);
     }
-  }, [schedule, selectedMonth, selectedYear]);
+  }, [schedule, selectedMonth, selectedYear, pendingPosition, pendingDateToSelect]);
 
   // --- Navigation Handlers ---
   const handlePrevMonth = () => {
@@ -413,16 +442,28 @@ export default function Calendar() {
     return getISOWeek(schedule.days[selectedDayIndex].date);
   }, [schedule, selectedDayIndex]);
 
-  // Mobile: Navigate to previous/next week
+  // Mobile: Navigate to previous/next week (crosses month boundaries)
   const handlePrevWeek = () => {
-    const newIndex = Math.max(0, selectedDayIndex - 7);
-    setSelectedDayIndex(newIndex);
+    const newIndex = selectedDayIndex - 7;
+    if (newIndex < 0) {
+      // Cross to previous month
+      handlePrevMonth();
+      setPendingPosition('end');
+    } else {
+      setSelectedDayIndex(newIndex);
+    }
   };
 
   const handleNextWeek = () => {
     if (!schedule) return;
-    const newIndex = Math.min(schedule.days.length - 1, selectedDayIndex + 7);
-    setSelectedDayIndex(newIndex);
+    const newIndex = selectedDayIndex + 7;
+    if (newIndex >= schedule.days.length) {
+      // Cross to next month
+      handleNextMonth();
+      setPendingPosition('start');
+    } else {
+      setSelectedDayIndex(newIndex);
+    }
   };
 
   // Mobile: Go to today
@@ -454,6 +495,7 @@ export default function Calendar() {
         setSelectedMonth={setSelectedMonth}
         selectedYear={selectedYear}
         setSelectedYear={setSelectedYear}
+        setPendingDateToSelect={setPendingDateToSelect}
         isAdmin={isAdmin}
         onPrevWeek={handlePrevWeek}
         onNextWeek={handleNextWeek}
@@ -897,6 +939,7 @@ interface MobileViewProps {
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
   setSelectedYear: (year: number) => void;
+  setPendingDateToSelect: (date: Date | null) => void;
   isAdmin: boolean;
   onPrevWeek: () => void;
   onNextWeek: () => void;
@@ -912,6 +955,7 @@ function MobileView({
   setSelectedMonth,
   selectedYear,
   setSelectedYear,
+  setPendingDateToSelect,
   isAdmin,
   onPrevWeek,
   onNextWeek,
@@ -921,6 +965,22 @@ function MobileView({
   const { openLoginModal } = useAuth();
 
   if (!selectedDay) return null;
+
+  // Handle date selection - auto-change month if selecting adjacent month date
+  const handleDateSelect = (index: number) => {
+    const selectedDate = schedule.days[index];
+    const dateMonth = selectedDate.date.getMonth() + 1;
+    const dateYear = selectedDate.date.getFullYear();
+
+    // If selected date is in different month, change month
+    if (dateMonth !== selectedMonth || dateYear !== selectedYear) {
+      setSelectedMonth(dateMonth);
+      setSelectedYear(dateYear);
+      setPendingDateToSelect(selectedDate.date);
+    } else {
+      setSelectedDayIndex(index);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 pb-28 font-sans">
@@ -960,7 +1020,7 @@ function MobileView({
       <MobileDaySelector
         days={schedule.days}
         selectedIndex={selectedDayIndex}
-        onSelect={setSelectedDayIndex}
+        onSelect={handleDateSelect}
         onGoToToday={onGoToToday}
       />
     </div>
@@ -1214,6 +1274,7 @@ function MobileDaySelector({
           <div className="flex gap-1">
             {days.map((day, idx) => {
               const isSelected = idx === selectedIndex;
+              const isAdjacentMonth = !day.isCurrentMonth;
 
               return (
                 <button
@@ -1223,6 +1284,8 @@ function MobileDaySelector({
                   className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-colors ${
                     isSelected
                       ? 'bg-blue-500 text-white'
+                      : isAdjacentMonth
+                      ? 'text-gray-300 hover:bg-gray-100'
                       : 'text-gray-500 hover:bg-gray-100'
                   }`}
                 >
