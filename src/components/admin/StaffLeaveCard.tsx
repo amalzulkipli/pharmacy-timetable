@@ -91,7 +91,7 @@ export default function StaffLeaveCard({
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-sm text-gray-600">Annual Leave</span>
             <span className="text-lg font-semibold text-gray-900">
-              {al.remaining.toFixed(1)} <span className="text-sm font-normal text-gray-500">LEFT</span>
+              {Math.floor(al.remaining)} <span className="text-sm font-normal text-gray-500">LEFT</span>
             </span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -101,7 +101,7 @@ export default function StaffLeaveCard({
             />
           </div>
           <div className="flex items-center justify-between text-xs text-gray-500 mt-1.5">
-            <span>{al.used.toFixed(1)} used</span>
+            <span>{Math.floor(al.used)} used</span>
             <span>{al.entitlement} total</span>
           </div>
         </div>
@@ -111,7 +111,7 @@ export default function StaffLeaveCard({
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-sm text-gray-600">Replacement Leave</span>
             <span className="text-lg font-semibold text-gray-900">
-              {rl.remaining.toFixed(1)} <span className="text-sm font-normal text-gray-500">LEFT</span>
+              {Math.floor(rl.remaining)} <span className="text-sm font-normal text-gray-500">LEFT</span>
             </span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2.5">
@@ -121,8 +121,8 @@ export default function StaffLeaveCard({
             />
           </div>
           <div className="flex items-center justify-between text-xs text-gray-500 mt-1.5">
-            <span>{rl.used.toFixed(1)} used</span>
-            <span>{rl.earned.toFixed(1)} earned</span>
+            <span>{Math.floor(rl.used)} used</span>
+            <span>{Math.floor(rl.earned)} earned</span>
           </div>
         </div>
 
