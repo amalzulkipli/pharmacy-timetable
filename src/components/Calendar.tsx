@@ -687,10 +687,10 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day:
 
   return (
     <div className={`border-t border-r border-gray-200 p-1.5 md:p-2 min-h-[160px] md:min-h-[200px] ${day.isHoliday ? 'bg-red-100' : day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}`}>
-      <div className="flex justify-between items-center mb-1 md:mb-2">
+      <div className="flex justify-between items-start mb-1 md:mb-2 min-h-[20px] md:min-h-[22px]">
         {/* Date number with blue circle for today */}
         {isToday ? (
-          <span className="w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full bg-blue-500 text-white font-semibold text-xs md:text-sm">
+          <span className="inline-flex items-center justify-center w-5 h-5 md:w-5 md:h-5 rounded-full bg-blue-500 text-white font-semibold text-xs flex-shrink-0">
             {format(day.date, 'd')}
           </span>
         ) : (
