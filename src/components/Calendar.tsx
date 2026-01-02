@@ -1324,14 +1324,7 @@ function MobileDaySelector({
                   className={buttonClasses}
                 >
                   <span className="text-xs font-semibold uppercase">{format(day.date, 'EEE')}</span>
-                  {/* Date number with blue circle for today */}
-                  {isToday && !isSelected ? (
-                    <span className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 text-white text-xl font-bold">
-                      {format(day.date, 'd')}
-                    </span>
-                  ) : (
-                    <span className="text-xl font-bold">{format(day.date, 'd')}</span>
-                  )}
+                  <span className="text-xl font-bold">{format(day.date, 'd')}</span>
                 </button>
               );
             })}
