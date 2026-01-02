@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
     const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()));
 
     const balances = await prisma.leaveBalance.findMany({
-      where: { year },
+      where: {
+        year,
+        staff: { isActive: true },
+      },
       include: { staff: true },
     });
 
