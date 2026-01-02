@@ -540,7 +540,9 @@ export default function Calendar() {
           </div>
         </div>
 
-        <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} monthlyHourTotals={monthlyHourTotals} />
+        {isAdmin && (
+          <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} monthlyHourTotals={monthlyHourTotals} />
+        )}
 
         <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} isAdmin={isAdmin} />
 
