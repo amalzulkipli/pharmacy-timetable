@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// STAFF MANAGEMENT
+// ============================================
+
+model Staff {
+  id             String   @id @default(cuid())
+  staffId        String   @unique // e.g., "fatimah", "siti" - matches current system
+  name           String
+  role           String // "Pharmacist" | "Assistant Pharmacist"
+  weeklyHours    Int
+  defaultOffDays String // JSON array string: "[0,6]" for Sat/Sun (0=Sun, 6=Sat)
+  alEntitlement  Int      @default(14) // Annual leave days per year
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  scheduleOverrides ScheduleOverride[]
+  leaveBalances     LeaveBalance[]
+  leaveHistory      LeaveHistory[]
+
+  @@index([staffId])
+}
+
+// ============================================
+// SCHEDULE OVERRIDES
+// ============================================
+
+model ScheduleOverride {
+  id        String   @id @default(cuid())
+  date      DateTime // The specific date being overridden
+  staffId   String // Foreign key to Staff.staffId
+
+  // Override data
+  shiftType String? // e.g., "11h", "9h_early", null for off
+  isLeave   Boolean @default(false)
+  leaveType String? // "AL" | "RL" | "EL" | null
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  staff Staff @relation(fields: [staffId], references: [staffId])
+
+  @@unique([date, staffId])
+  @@index([date])
+  @@index([staffId])
+}
+
+// ============================================
+// REPLACEMENT SHIFTS (Temporary Staff)
+// ============================================
+
+model ReplacementShift {
+  id              String   @id @default(cuid())
+  date            DateTime
+  originalStaffId String // Who is being replaced
+  tempStaffName   String // Name of temporary replacement
+  startTime       String // "09:15"
+  endTime         String // "21:45"
+  workHours       Float // Calculated hours (minus break)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([originalStaffId])
+}
+
+// ============================================
+// LEAVE MANAGEMENT
+// ============================================
+
+model LeaveBalance {
+  id      String @id @default(cuid())
+  staffId String
+  year    Int // e.g., 2025
+
+  // Annual Leave
+  alEntitlement Int   @default(14) // Copied from Staff at year start
+  alUsed        Float @default(0) // Can be fractional for half-days
+
+  // Replacement Leave
+  rlEarned Float @default(0) // Auto-calculated from public holidays
+  rlUsed   Float @default(0)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  staff Staff @relation(fields: [staffId], references: [staffId])
+
+  @@unique([staffId, year])
+  @@index([staffId])
+  @@index([year])
+}
+
+model LeaveHistory {
+  id        String   @id @default(cuid())
+  staffId   String
+  date      DateTime // The leave date
+  leaveType String // "AL" | "RL" | "EL"
+  status    String   @default("approved") // "approved" | "pending" | "cancelled"
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  staff Staff @relation(fields: [staffId], references: [staffId])
+
+  @@index([staffId])
+  @@index([date])
+  @@index([staffId, date])
+}
+
+// ============================================
+// PUBLIC HOLIDAYS (for RL calculation)
+// ============================================
+
+model PublicHoliday {
+  id   String   @id @default(cuid())
+  date DateTime @unique
+  name String
+  year Int
+
+  createdAt DateTime @default(now())
+
+  @@index([year])
+  @@index([date])
+}

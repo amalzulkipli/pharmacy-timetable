@@ -7,8 +7,9 @@ import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, Replacem
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, User, LogOut, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useScheduleOverrides } from '../hooks/useLocalStorage';
+import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import DataManager from './DataManager';
+import AdminPanel from './admin/AdminPanel';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -60,9 +61,22 @@ export default function Calendar() {
   const [schedule, setSchedule] = useState<MonthSchedule | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBuffer, setEditBuffer] = useState<Record<string, Record<string, string>>>({});
-  const { getOverridesForMonth, saveOverridesForMonth } = useScheduleOverrides();
+
   // Type for override structure
   type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' } | ReplacementShift[]>;
+
+  // Use database-backed hook for overrides (with localStorage fallback)
+  const {
+    overrides: dbOverrides,
+    saveOverrides,
+    isLoading: isLoadingOverrides,
+    isOnline
+  } = useScheduleOverridesDB({
+    year: selectedYear,
+    month: selectedMonth,
+  });
+
+  // Local state for manual overrides (synced from DB)
   const [manualOverrides, setManualOverrides] = useState<Record<string, OverrideData>>({});
   
   // State for the replacement modal
@@ -155,11 +169,12 @@ export default function Calendar() {
   };
 
   // --- Core Logic ---
+  // Sync local state with DB overrides
   useEffect(() => {
-    // Load persisted overrides for the current month
-    const persistedOverrides = getOverridesForMonth(selectedYear, selectedMonth) as Record<string, OverrideData>;
-    setManualOverrides(persistedOverrides);
-  }, [selectedMonth, selectedYear, getOverridesForMonth]);
+    if (dbOverrides) {
+      setManualOverrides(dbOverrides as Record<string, OverrideData>);
+    }
+  }, [dbOverrides]);
 
   useEffect(() => {
     // Apply overrides to the base schedule
@@ -235,7 +250,7 @@ export default function Calendar() {
     setIsEditMode(true);
   };
   
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     const newOverrides = { ...manualOverrides };
     Object.keys(editBuffer).forEach(dayKey => {
       if (!newOverrides[dayKey]) newOverrides[dayKey] = {};
@@ -253,13 +268,16 @@ export default function Calendar() {
         } else if (value !== 'off') {
           newShift = SHIFT_DEFINITIONS[value];
         }
-        
+
         newOverrides[dayKey][staffId] = { shift: newShift, isLeave, leaveType };
       });
     });
     setManualOverrides(newOverrides);
-    // Save overrides to localStorage for the current month
-    saveOverridesForMonth(selectedYear, selectedMonth, newOverrides);
+    // Save overrides to database (with localStorage fallback)
+    const result = await saveOverrides(newOverrides);
+    if (!result.success) {
+      console.warn('Saved locally, will sync when online:', result.error);
+    }
     setIsEditMode(false);
   };
 
@@ -272,7 +290,7 @@ export default function Calendar() {
     setEditBuffer(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], [staffId]: value } }));
   };
 
-  const handleSaveReplacement = (name: string, start: string, end: string, breakHours: string) => {
+  const handleSaveReplacement = async (name: string, start: string, end: string, breakHours: string) => {
     if (!replacementContext || !name) return;
 
     const { dayKey, staffId } = replacementContext;
@@ -304,8 +322,11 @@ export default function Calendar() {
     newOverrides[dayKey].replacements = replacements;
 
     setManualOverrides(newOverrides);
-    // Save overrides to localStorage for the current month
-    saveOverridesForMonth(selectedYear, selectedMonth, newOverrides as Record<string, Record<string, unknown>>);
+    // Save overrides to database (with localStorage fallback)
+    const result = await saveOverrides(newOverrides);
+    if (!result.success) {
+      console.warn('Saved locally, will sync when online:', result.error);
+    }
     setReplacementModalOpen(false);
     setReplacementContext(null);
     // Reset dropdown in buffer
@@ -481,7 +502,7 @@ export default function Calendar() {
     }
   };
 
-  if (!schedule) return <div className="p-8 text-center">Loading Schedule...</div>;
+  if (!schedule || isLoadingOverrides) return <div className="p-8 text-center">Loading Schedule...</div>;
 
   // Mobile: Render single-day view
   if (isMobile) {
@@ -513,6 +534,7 @@ export default function Calendar() {
           selectedYear={selectedYear} setSelectedYear={setSelectedYear}
           isEditMode={isEditMode}
           isAdmin={isAdmin}
+          isOnline={isOnline}
           onEnterEditMode={handleEnterEditMode}
           onSaveChanges={handleSaveChanges}
           onCancelEdit={() => setIsEditMode(false)}
@@ -548,6 +570,8 @@ export default function Calendar() {
 
         <DataManager isAdmin={isAdmin} />
 
+        <AdminPanel isAdmin={isAdmin} />
+
         {isReplacementModalOpen && (
           <ReplacementModal
             context={replacementContext}
@@ -564,13 +588,14 @@ export default function Calendar() {
 // Sub-Components for a Cleaner Structure
 // ================================================================================================
 
-function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday }: {
+function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, isOnline, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday }: {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
   setSelectedYear: (year: number) => void;
   isEditMode: boolean;
   isAdmin: boolean;
+  isOnline: boolean;
   onEnterEditMode: () => void;
   onSaveChanges: () => void;
   onCancelEdit: () => void;
@@ -586,7 +611,14 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
     <div className="mb-4">
       {/* Row 1: Title in white card */}
       <div className="bg-white rounded-lg shadow-md p-3 md:p-4 mb-3 md:mb-4">
-        <h1 className="text-[18px] md:text-[22px] font-bold text-[#37352f] tracking-tight">Alde ST Timetable</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-[18px] md:text-[22px] font-bold text-[#37352f] tracking-tight">Alde ST Timetable</h1>
+          {!isOnline && (
+            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
+              Offline Mode
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Row 2: Month/Year and Navigation */}
