@@ -7,14 +7,12 @@ import { format, parseISO } from 'date-fns';
 interface LeaveHistoryEntry {
   id: string;
   staffId: string;
+  staffName: string;
   date: string;
   leaveType: string;
   status: string;
   notes: string | null;
   createdAt: string;
-  staff: {
-    name: string;
-  };
 }
 
 interface StaffOption {
@@ -86,7 +84,7 @@ export default function LeaveHistory() {
     const headers = ['Date', 'Staff', 'Leave Type', 'Status', 'Notes'];
     const rows = history.map((entry) => [
       format(parseISO(entry.date), 'yyyy-MM-dd'),
-      entry.staff.name,
+      entry.staffName,
       entry.leaveType,
       entry.status,
       entry.notes || '',
@@ -150,7 +148,7 @@ export default function LeaveHistory() {
           <select
             value={selectedStaff}
             onChange={(e) => setSelectedStaff(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm"
+            className="px-3 py-2 border rounded-md text-sm text-gray-900"
           >
             <option value="all">All Staff</option>
             {staffList.map((s) => (
@@ -162,7 +160,7 @@ export default function LeaveHistory() {
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="px-3 py-2 border rounded-md text-sm"
+            className="px-3 py-2 border rounded-md text-sm text-gray-900"
           >
             {years.map((year) => (
               <option key={year} value={year}>
@@ -208,7 +206,7 @@ export default function LeaveHistory() {
                 <td className="px-4 py-3 text-sm text-gray-900">
                   {format(parseISO(entry.date), 'dd MMM yyyy')}
                 </td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">{entry.staff.name}</td>
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{entry.staffName}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getLeaveTypeColor(entry.leaveType)}`}>
                     {entry.leaveType}
