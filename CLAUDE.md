@@ -66,7 +66,7 @@ The Calendar component (`src/components/Calendar.tsx`) supports manual schedule 
 
 ### Public Holidays
 
-Hardcoded in `src/lib/schedule-generator.ts` as `PUBLIC_HOLIDAYS_2025`. On public holidays:
+Hardcoded in `src/lib/schedule-generator.ts` as `PUBLIC_HOLIDAYS` (includes 2025-2026). On public holidays:
 - All staff are automatically marked as off (shift = null)
 - The schedule generator blocks all shifts for these dates
 

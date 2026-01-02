@@ -680,10 +680,20 @@ function Alerts({ schedule, weeklyHourSummaries, isAdmin }: { schedule: MonthSch
 
 function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day: DaySchedule, isEditMode: boolean, editBuffer: Record<string, Record<string, string>>, onEditBufferChange: (dayKey: string, staffId: string, value: string) => void }) {
   const dayKey = format(day.date, 'yyyy-MM-dd');
+  const today = new Date();
+  const isToday = format(day.date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+
   return (
     <div className={`border-t border-r border-gray-200 p-1.5 md:p-2 min-h-[160px] md:min-h-[200px] ${day.isHoliday ? 'bg-red-100' : day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}`}>
       <div className="flex justify-between items-center mb-1 md:mb-2">
-        <span className={`font-semibold text-xs md:text-sm ${!day.isCurrentMonth ? 'text-gray-400' : 'text-gray-800'}`}>{format(day.date, 'd')}</span>
+        {/* Date number with blue circle for today */}
+        {isToday ? (
+          <span className="w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full bg-blue-500 text-white font-semibold text-xs md:text-sm">
+            {format(day.date, 'd')}
+          </span>
+        ) : (
+          <span className={`font-semibold text-xs md:text-sm ${!day.isCurrentMonth ? 'text-gray-400' : 'text-gray-800'}`}>{format(day.date, 'd')}</span>
+        )}
         {day.isHoliday ? (
           <span className="text-[10px] md:text-xs text-red-600 font-medium truncate max-w-[50px] md:max-w-[80px]" title={day.holidayName}>{day.holidayName}</span>
         ) : (
@@ -712,8 +722,14 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day:
 function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff: StaffMember, day: DaySchedule, isEditMode: boolean, editValue: string, onEditChange: (value: string) => void }) {
   const staffShift = day.staffShifts[staff.id];
   const colorTheme = STAFF_COLORS[staff.id];
+  const isOff = !staffShift.shift && !staffShift.isLeave;
+
+  // Use grey styling when staff is off
+  const cardBg = isOff ? 'bg-gray-100' : colorTheme.bg;
+  const cardText = isOff ? 'text-gray-400' : colorTheme.text;
+
   return (
-    <div className={`${colorTheme.bg} ${colorTheme.text} rounded-md p-1.5 md:p-2 text-[10px] md:text-xs`}>
+    <div className={`${cardBg} ${cardText} rounded-md p-1.5 md:p-2 text-[10px] md:text-xs`}>
       <div className="font-bold mb-0.5 md:mb-1 truncate">{staff.name}</div>
       {isEditMode ? (
         <ShiftDropdown value={editValue} onChange={onEditChange} />
@@ -1124,6 +1140,7 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
   const initials = staff.name.substring(0, 2).toUpperCase();
   const isOff = !staffShift.shift && !staffShift.isLeave;
   const isLeave = staffShift.isLeave;
+  const isNotWorking = isOff || isLeave;
 
   // Determine shift label
   const shiftLabel = isOff
@@ -1133,16 +1150,22 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
     : getShiftLabel(staffShift.shift);
 
   // Badge styling
-  const badgeClasses = isOff || isLeave
+  const badgeClasses = isNotWorking
     ? 'bg-gray-100 text-gray-600'
     : avatarColors.badge;
 
+  // Card and avatar styling - grey out when not working
+  const cardClasses = isNotWorking
+    ? 'bg-gray-50 rounded-xl p-4 shadow-sm'
+    : 'bg-white rounded-xl p-4 shadow-sm';
+  const avatarBg = isNotWorking ? 'bg-gray-300' : avatarColors.bg;
+
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm">
+    <div className={cardClasses}>
       {/* Top section: Avatar + Info + Badge */}
       <div className="flex items-center gap-3">
         {/* Smaller Avatar with border/shadow */}
-        <div className={`w-10 h-10 ${avatarColors.bg} rounded-full flex items-center justify-center flex-shrink-0 border-2 border-white shadow-md`}>
+        <div className={`w-10 h-10 ${avatarBg} rounded-full flex items-center justify-center flex-shrink-0 border-2 border-white shadow-md`}>
           <span className="text-white font-bold text-xs">{initials}</span>
         </div>
 
@@ -1245,6 +1268,8 @@ function MobileDaySelector({
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedButtonRef = useRef<HTMLButtonElement>(null);
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
 
   // Auto-scroll to selected date
   useEffect(() => {
@@ -1275,23 +1300,36 @@ function MobileDaySelector({
             {days.map((day, idx) => {
               const isSelected = idx === selectedIndex;
               const isAdjacentMonth = !day.isCurrentMonth;
+              const isToday = format(day.date, 'yyyy-MM-dd') === todayStr;
+
+              // Determine button styling
+              let buttonClasses = 'flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-colors';
+              if (isSelected) {
+                buttonClasses += ' bg-blue-500 text-white';
+              } else if (isToday) {
+                buttonClasses += ' bg-blue-100 text-blue-600';
+              } else if (isAdjacentMonth) {
+                buttonClasses += ' text-gray-300 hover:bg-gray-100';
+              } else {
+                buttonClasses += ' text-gray-500 hover:bg-gray-100';
+              }
 
               return (
                 <button
                   key={format(day.date, 'yyyy-MM-dd')}
                   ref={isSelected ? selectedButtonRef : null}
                   onClick={() => onSelect(idx)}
-                  className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-colors ${
-                    isSelected
-                      ? 'bg-blue-500 text-white'
-                      : isAdjacentMonth
-                      ? 'text-gray-300 hover:bg-gray-100'
-                      : 'text-gray-500 hover:bg-gray-100'
-                  }`}
+                  className={buttonClasses}
                 >
                   <span className="text-xs font-semibold uppercase">{format(day.date, 'EEE')}</span>
-                  <span className="text-xl font-bold">{format(day.date, 'd')}</span>
-                  {isSelected && <span className="w-1 h-1 bg-white rounded-full mt-0.5" />}
+                  {/* Date number with blue circle for today */}
+                  {isToday && !isSelected ? (
+                    <span className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-500 text-white text-xl font-bold">
+                      {format(day.date, 'd')}
+                    </span>
+                  ) : (
+                    <span className="text-xl font-bold">{format(day.date, 'd')}</span>
+                  )}
                 </button>
               );
             })}
