@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { History, Loader2, Trash2, Download } from 'lucide-react';
+import { History, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 interface LeaveHistoryEntry {
@@ -10,9 +10,6 @@ interface LeaveHistoryEntry {
   staffName: string;
   date: string;
   leaveType: string;
-  status: string;
-  notes: string | null;
-  createdAt: string;
 }
 
 interface StaffOption {
@@ -65,41 +62,6 @@ export default function LeaveHistory() {
     fetchHistory();
   }, [fetchHistory]);
 
-  const handleCancel = async (id: string) => {
-    if (!confirm('Are you sure you want to cancel this leave entry?')) return;
-
-    try {
-      const response = await fetch(`/api/leave/history?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) throw new Error('Failed to cancel leave');
-      await fetchHistory();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cancel leave');
-    }
-  };
-
-  const handleExportCSV = () => {
-    const headers = ['Date', 'Staff', 'Leave Type', 'Status', 'Notes'];
-    const rows = history.map((entry) => [
-      format(parseISO(entry.date), 'yyyy-MM-dd'),
-      entry.staffName,
-      entry.leaveType,
-      entry.status,
-      entry.notes || '',
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `leave-history-${selectedYear}${selectedStaff !== 'all' ? `-${selectedStaff}` : ''}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   const getLeaveTypeColor = (type: string) => {
     switch (type) {
       case 'AL':
@@ -110,19 +72,6 @@ export default function LeaveHistory() {
         return 'bg-orange-100 text-orange-700';
       default:
         return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'text-green-600';
-      case 'pending':
-        return 'text-yellow-600';
-      case 'cancelled':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
     }
   };
 
@@ -168,14 +117,6 @@ export default function LeaveHistory() {
               </option>
             ))}
           </select>
-          <button
-            onClick={handleExportCSV}
-            disabled={history.length === 0}
-            className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 disabled:opacity-50"
-          >
-            <Download className="w-4 h-4 mr-1" />
-            Export CSV
-          </button>
         </div>
       </div>
 
@@ -195,14 +136,11 @@ export default function LeaveHistory() {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Staff</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {history.map((entry) => (
-              <tr key={entry.id} className={entry.status === 'cancelled' ? 'bg-gray-50 opacity-60' : ''}>
+              <tr key={entry.id}>
                 <td className="px-4 py-3 text-sm text-gray-900">
                   {format(parseISO(entry.date), 'dd MMM yyyy')}
                 </td>
@@ -211,23 +149,6 @@ export default function LeaveHistory() {
                   <span className={`px-2 py-1 text-xs font-medium rounded-full ${getLeaveTypeColor(entry.leaveType)}`}>
                     {entry.leaveType}
                   </span>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <span className={`font-medium ${getStatusColor(entry.status)}`}>
-                    {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-500">{entry.notes || '-'}</td>
-                <td className="px-4 py-3">
-                  {entry.status !== 'cancelled' && (
-                    <button
-                      onClick={() => handleCancel(entry.id)}
-                      className="p-1 text-red-600 hover:bg-red-50 rounded"
-                      title="Cancel leave"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
                 </td>
               </tr>
             ))}
@@ -246,16 +167,16 @@ export default function LeaveHistory() {
         <div className="mt-4 p-3 bg-gray-50 rounded-md">
           <div className="flex flex-wrap gap-4 text-sm">
             <span>
-              <strong>AL:</strong> {history.filter((e) => e.leaveType === 'AL' && e.status === 'approved').length} days
+              <strong>AL:</strong> {history.filter((e) => e.leaveType === 'AL').length} days
             </span>
             <span>
-              <strong>RL:</strong> {history.filter((e) => e.leaveType === 'RL' && e.status === 'approved').length} days
+              <strong>RL:</strong> {history.filter((e) => e.leaveType === 'RL').length} days
             </span>
             <span>
-              <strong>EL:</strong> {history.filter((e) => e.leaveType === 'EL' && e.status === 'approved').length} days
+              <strong>EL:</strong> {history.filter((e) => e.leaveType === 'EL').length} days
             </span>
             <span className="text-gray-500">
-              Total: {history.filter((e) => e.status === 'approved').length} approved leave entries
+              Total: {history.length} leave entries
             </span>
           </div>
         </div>
