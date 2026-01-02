@@ -8,12 +8,9 @@ interface Staff {
   name: string;
   role: string;
   weeklyHours: number;
-  defaultOffDays: number[];
   alEntitlement: number;
   isActive: boolean;
 }
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function StaffManagement() {
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -29,7 +26,6 @@ export default function StaffManagement() {
     name: '',
     role: 'Pharmacist',
     weeklyHours: 45,
-    defaultOffDays: [0, 6] as number[],
     alEntitlement: 14,
   });
 
@@ -59,7 +55,6 @@ export default function StaffManagement() {
       name: s.name,
       role: s.role,
       weeklyHours: s.weeklyHours,
-      defaultOffDays: s.defaultOffDays,
       alEntitlement: s.alEntitlement,
     });
   };
@@ -72,18 +67,8 @@ export default function StaffManagement() {
       name: '',
       role: 'Pharmacist',
       weeklyHours: 45,
-      defaultOffDays: [0, 6],
       alEntitlement: 14,
     });
-  };
-
-  const toggleOffDay = (day: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      defaultOffDays: prev.defaultOffDays.includes(day)
-        ? prev.defaultOffDays.filter((d) => d !== day)
-        : [...prev.defaultOffDays, day].sort(),
-    }));
   };
 
   const handleSave = async () => {
@@ -223,25 +208,6 @@ export default function StaffManagement() {
                 className="w-full px-3 py-2 border rounded-md text-sm text-gray-900"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Default Off Days</label>
-              <div className="flex flex-wrap gap-2">
-                {DAYS.map((day, idx) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleOffDay(idx)}
-                    className={`px-3 py-1 text-xs font-medium rounded-full ${
-                      formData.defaultOffDays.includes(idx)
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
           <div className="flex justify-end space-x-2 mt-4">
             <button
@@ -271,7 +237,6 @@ export default function StaffManagement() {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hours/Week</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Off Days</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">AL Days</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -283,9 +248,6 @@ export default function StaffManagement() {
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{s.role}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{s.weeklyHours}h</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {s.defaultOffDays.map((d) => DAYS[d]).join(', ')}
-                  </td>
                   <td className="px-4 py-3 text-sm text-gray-600">{s.alEntitlement} days</td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex space-x-2">

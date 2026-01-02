@@ -137,8 +137,16 @@ export async function POST(request: NextRequest) {
               shiftType = findShiftKey(override.shift);
             }
 
-            await tx.scheduleOverride.create({
-              data: {
+            await tx.scheduleOverride.upsert({
+              where: {
+                date_staffId: { date, staffId: key },
+              },
+              update: {
+                shiftType,
+                isLeave: override.isLeave || false,
+                leaveType: override.leaveType || null,
+              },
+              create: {
                 date,
                 staffId: key,
                 shiftType,

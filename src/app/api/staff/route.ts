@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { staffId, name, role, weeklyHours, defaultOffDays, alEntitlement } = body;
 
-    // Validate required fields
-    if (!staffId || !name || !role || weeklyHours === undefined || !defaultOffDays) {
+    // Validate required fields (defaultOffDays is optional, defaults to [0, 6])
+    if (!staffId || !name || !role || weeklyHours === undefined) {
       return NextResponse.json(
-        { error: 'Missing required fields: staffId, name, role, weeklyHours, defaultOffDays' },
+        { error: 'Missing required fields: staffId, name, role, weeklyHours' },
         { status: 400 }
       );
     }
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         name,
         role,
         weeklyHours,
-        defaultOffDays: JSON.stringify(defaultOffDays),
+        defaultOffDays: JSON.stringify(defaultOffDays || [0, 6]),
         alEntitlement: alEntitlement || 14,
       },
     });
