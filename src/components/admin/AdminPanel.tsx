@@ -1,12 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, Calendar, History, Settings } from 'lucide-react';
+import { Users, Calendar, Settings } from 'lucide-react';
 import StaffManagement from './StaffManagement';
 import LeaveOverview from './LeaveOverview';
-import LeaveHistory from './LeaveHistory';
 
-type Tab = 'staff' | 'leave' | 'history';
+type Tab = 'leave' | 'staff';
 
 interface AdminPanelProps {
   isAdmin: boolean;
@@ -20,9 +19,8 @@ export default function AdminPanel({ isAdmin }: AdminPanelProps) {
   }
 
   const tabs = [
-    { id: 'leave' as Tab, label: 'Leave Overview', icon: Calendar },
+    { id: 'leave' as Tab, label: 'Leave Management', icon: Calendar },
     { id: 'staff' as Tab, label: 'Staff Management', icon: Users },
-    { id: 'history' as Tab, label: 'Leave History', icon: History },
   ];
 
   return (
@@ -61,7 +59,6 @@ export default function AdminPanel({ isAdmin }: AdminPanelProps) {
       <div>
         {activeTab === 'leave' && <LeaveOverview />}
         {activeTab === 'staff' && <StaffManagement />}
-        {activeTab === 'history' && <LeaveHistory />}
       </div>
     </div>
   );

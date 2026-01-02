@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 export interface LeaveBalanceSummary {
   staffId: string;
   staffName: string;
+  staffRole: string;
   year: number;
   al: {
     entitlement: number;
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
     const summaries: LeaveBalanceSummary[] = balances.map((b) => ({
       staffId: b.staffId,
       staffName: b.staff.name,
+      staffRole: b.staff.role,
       year: b.year,
       al: {
         entitlement: b.alEntitlement,
