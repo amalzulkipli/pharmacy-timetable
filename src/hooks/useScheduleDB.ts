@@ -118,7 +118,9 @@ export function useScheduleOverridesDB({
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to save: ${response.statusText}`);
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.details || errorData.error || response.statusText;
+          throw new Error(`Failed to save: ${errorMessage}`);
         }
 
         setOverrides(newOverrides);

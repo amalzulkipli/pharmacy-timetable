@@ -225,6 +225,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error saving overrides:', error);
-    return NextResponse.json({ error: 'Failed to save overrides' }, { status: 500 });
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error('Error details:', error.message, error.stack);
+    }
+    return NextResponse.json(
+      { error: 'Failed to save overrides', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
