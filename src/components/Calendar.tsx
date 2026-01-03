@@ -589,10 +589,10 @@ export default function Calendar({ mode = 'public', hideTitle = false }: Calenda
           hideTitle={hideTitle}
         />
 
-        <div id="calendar-container" className="bg-white rounded-lg shadow-md">
+        <div id="calendar-container" className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="calendar-grid">
-            {DAYS.map(day => (
-              <div key={day} className="p-2 text-center font-bold text-gray-600 bg-gray-200 border-l border-gray-300 text-sm md:text-base">{day}</div>
+            {DAYS.map((day, idx) => (
+              <div key={day} className={`py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 ${idx > 0 ? 'border-l border-gray-200' : ''}`}>{day}</div>
             ))}
             {schedule.days.map(day => (
               <CalendarDay
@@ -784,20 +784,20 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day:
   const isToday = format(day.date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
 
   return (
-    <div className={`border-t border-r border-gray-200 p-1.5 md:p-2 min-h-[160px] md:min-h-[200px] ${day.isHoliday ? 'bg-red-100' : day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'}`}>
-      <div className="flex justify-between items-start mb-1 md:mb-2 min-h-[20px] md:min-h-[22px]">
+    <div className={`border-t border-l border-gray-100 p-2 md:p-3 min-h-[160px] md:min-h-[200px] ${day.isHoliday ? 'bg-red-50' : day.isCurrentMonth ? 'bg-white' : 'bg-gray-50/50'}`}>
+      <div className="flex justify-between items-start mb-2 md:mb-3">
         {/* Date number with blue circle for today */}
         {isToday ? (
-          <span className="inline-flex items-center justify-center w-5 h-5 md:w-5 md:h-5 rounded-full bg-blue-500 text-white font-semibold text-xs flex-shrink-0">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white font-semibold text-xs flex-shrink-0">
             {format(day.date, 'd')}
           </span>
         ) : (
-          <span className={`font-semibold text-xs md:text-sm ${!day.isCurrentMonth ? 'text-gray-400' : 'text-gray-800'}`}>{format(day.date, 'd')}</span>
+          <span className={`font-semibold text-sm ${!day.isCurrentMonth ? 'text-gray-300' : 'text-gray-700'}`}>{format(day.date, 'd')}</span>
         )}
         {day.isHoliday ? (
-          <span className="text-[10px] md:text-xs text-red-600 font-medium truncate max-w-[50px] md:max-w-[80px]" title={day.holidayName}>{day.holidayName}</span>
+          <span className="text-[10px] md:text-xs text-red-500 font-medium truncate max-w-[50px] md:max-w-[80px]" title={day.holidayName}>{day.holidayName}</span>
         ) : (
-          <span className="text-[10px] md:text-xs text-gray-500">W{getISOWeek(day.date)}</span>
+          <span className="text-[10px] md:text-xs text-gray-400 font-medium">W{getISOWeek(day.date)}</span>
         )}
       </div>
       <div className="space-y-1 md:space-y-2">
@@ -825,11 +825,11 @@ function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff:
   const isOff = !staffShift.shift && !staffShift.isLeave;
 
   // Use grey styling when staff is off
-  const cardBg = isOff ? 'bg-gray-100' : colorTheme.bg;
+  const cardBg = isOff ? 'bg-gray-50' : colorTheme.bg;
   const cardText = isOff ? 'text-gray-400' : colorTheme.text;
 
   return (
-    <div className={`${cardBg} ${cardText} rounded-md p-1.5 md:p-2 text-[10px] md:text-xs`}>
+    <div className={`${cardBg} ${cardText} rounded-lg p-1.5 md:p-2 text-[10px] md:text-xs`}>
       <div className="font-bold mb-0.5 md:mb-1 truncate">{staff.name}</div>
       {isEditMode ? (
         <ShiftDropdown value={editValue} onChange={onEditChange} />
@@ -870,12 +870,12 @@ function ShiftDisplay({ staffShift, staffId }: { staffShift: DaySchedule['staffS
   return (
     <div>
       {/* Time text row */}
-      <div className="flex items-center justify-between font-mono opacity-90 text-[9px] md:text-xs">
-        <span>{shift.startTime}-{shift.endTime}</span>
-        <span className="font-bold">({shift.workHours}h)</span>
+      <div className="flex items-center justify-between font-mono text-[9px] md:text-xs">
+        <span className="opacity-80">{shift.startTime}-{shift.endTime}</span>
+        <span className="font-semibold">({shift.workHours}h)</span>
       </div>
       {/* Timeline bar */}
-      <div className="mt-0.5 md:mt-1 h-1 md:h-1.5 bg-gray-200 rounded-full relative overflow-hidden">
+      <div className="mt-1 md:mt-1.5 h-1.5 md:h-2 bg-white/50 rounded-full relative overflow-hidden">
         <div
           className={`absolute h-full rounded-full ${barColor}`}
           style={{
@@ -960,19 +960,19 @@ function ReplacementModal({ context, onClose, onSave }: { context: { dayKey: str
 
 function ReplacementCard({ replacement }: { replacement: ReplacementShift }) {
   return (
-    <div className="bg-gray-200 border-l-4 border-gray-400 rounded-md p-1.5 md:p-2 text-[10px] md:text-xs text-gray-700">
+    <div className="bg-gray-100 border-l-4 border-gray-400 rounded-lg p-1.5 md:p-2 text-[10px] md:text-xs text-gray-700">
       <div className="font-bold flex justify-between mb-0.5 md:mb-0">
         <span className="truncate">{replacement.tempStaffName}</span>
         <span className="text-gray-500 italic text-[9px] md:text-xs">Temp</span>
       </div>
       <div>
         {/* Time text row */}
-        <div className="flex items-center justify-between font-mono opacity-90 text-[9px] md:text-xs">
-          <span>{replacement.startTime}-{replacement.endTime}</span>
-          <span className="font-bold">({replacement.workHours}h)</span>
+        <div className="flex items-center justify-between font-mono text-[9px] md:text-xs">
+          <span className="opacity-80">{replacement.startTime}-{replacement.endTime}</span>
+          <span className="font-semibold">({replacement.workHours}h)</span>
         </div>
         {/* Timeline bar */}
-        <div className="mt-0.5 md:mt-1 h-1 md:h-1.5 bg-gray-300 rounded-full relative overflow-hidden">
+        <div className="mt-1 md:mt-1.5 h-1.5 md:h-2 bg-white/50 rounded-full relative overflow-hidden">
           <div
             className="absolute h-full rounded-full bg-gray-500"
             style={{
