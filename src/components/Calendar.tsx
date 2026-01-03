@@ -5,7 +5,7 @@ import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, ex
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS, AVATAR_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, WeeklyHourSummary } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogOut, Clock, Calendar as CalendarIcon, Printer } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, LogOut, Clock, Calendar as CalendarIcon, Printer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import LoginModal from './LoginModal';
@@ -681,7 +681,7 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
                 onClick={onLoginClick}
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
               >
-                <User className="h-4 w-4" />
+                <LogIn className="h-4 w-4" />
                 <span className="hidden sm:inline">Login</span>
               </button>
             )}
