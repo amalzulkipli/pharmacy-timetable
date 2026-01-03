@@ -62,6 +62,23 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 - `src/staff-data.ts` - SHIFT_PATTERNS, SHIFT_DEFINITIONS, STAFF_MEMBERS, AVATAR_COLORS
 - `src/types/schedule.ts` - TypeScript interfaces
 
+### Page Routes
+
+| Route | Purpose | Access |
+|-------|---------|--------|
+| `/` | Public calendar view (read-only) | Public |
+| `/login` | Admin login page (modal style with blurred background) | Public |
+| `/admin` | Admin dashboard (redirects to schedule) | Protected |
+| `/admin/schedule` | Schedule editing with full calendar | Protected |
+| `/admin/staff` | Staff management (CRUD) | Protected |
+| `/admin/leave` | Leave overview and tracking | Protected |
+
+**Route Protection:** `src/middleware.ts` protects `/admin/*` routes using cookies. Redirects to `/login` if not authenticated.
+
+**Login Flow:** Users can login via:
+1. Click login icon on calendar → shows LoginModal overlay with blurred background
+2. Direct access to `/admin/*` → redirects to `/login` page (also modal style)
+
 ### API Routes
 
 | Endpoint | Purpose |
@@ -81,19 +98,20 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 - `useAuth.ts` - Admin authentication
 - `useLocalStorage.ts` - Local storage utilities
 
-### Admin Panel (`src/components/admin/`)
+### Admin Components (`src/components/admin/`)
 
-- `AdminPanel.tsx` - Tab container for admin features
+- `AdminNavigation.tsx` - Top navigation bar for admin section
 - `LeaveOverview.tsx` - Staff leave dashboard with balance cards
 - `StaffLeaveCard.tsx` - Individual staff leave display with history accordion
 - `StaffManagement.tsx` - CRUD for staff members and entitlements
 
 ### Calendar Component (`src/components/Calendar.tsx`)
 
-Main UI (~800+ lines):
+Main UI (~1400 lines), accepts `mode` prop:
+- `mode="public"` - Read-only view for regular staff (used at `/`)
+- `mode="admin"` - Full edit mode with summaries, alerts, data manager (used at `/admin/schedule`)
 - 7-column CSS Grid (Mon-Sun)
-- Admin mode for editing shifts/leave
-- CSV/PDF export
+- CSV/PDF export (admin only)
 - Mobile responsive with `MobileStaffCard`
 - Overrides persisted via `useScheduleOverridesDB` hook
 
@@ -110,6 +128,8 @@ Main UI (~800+ lines):
 5. **Public Holidays:** Stored in database, used for RL calculation. On holidays, all staff marked as off.
 
 6. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
+
+7. **Authentication:** Cookie-based auth via `useAuth` hook. Login sets `pharmacy-admin-auth` cookie (24h expiry) for middleware protection. Password stored in `NEXT_PUBLIC_ADMIN_PASSWORD` env var.
 
 ## PDF Generation
 

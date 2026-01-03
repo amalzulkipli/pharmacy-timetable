@@ -9,7 +9,7 @@ import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, User, Log
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import DataManager from './DataManager';
-import AdminPanel from './admin/AdminPanel';
+import LoginModal from './LoginModal';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -54,8 +54,16 @@ const BAR_COLORS: { [key: string]: string } = {
 // ================================================================================================
 // Main Calendar Component
 // ================================================================================================
-export default function Calendar() {
-  const { isAdmin } = useAuth();
+
+interface CalendarProps {
+  mode?: 'public' | 'admin';
+  hideTitle?: boolean;
+}
+
+export default function Calendar({ mode = 'public', hideTitle = false }: CalendarProps) {
+  const authContext = useAuth();
+  // In admin mode, always treat as admin; in public mode, use auth context
+  const isAdmin = mode === 'admin' || authContext.isAdmin;
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<MonthSchedule | null>(null);
@@ -82,6 +90,9 @@ export default function Calendar() {
   // State for the replacement modal
   const [isReplacementModalOpen, setReplacementModalOpen] = useState(false);
   const [replacementContext, setReplacementContext] = useState<{ dayKey: string; staffId: string } | null>(null);
+
+  // State for the login modal
+  const [isLoginModalOpen, setLoginModalOpen] = useState(false);
 
   // --- Mobile View State ---
   const [isMobile, setIsMobile] = useState(false);
@@ -507,21 +518,30 @@ export default function Calendar() {
   // Mobile: Render single-day view
   if (isMobile) {
     return (
-      <MobileView
-        schedule={schedule}
-        selectedDayIndex={selectedDayIndex}
-        setSelectedDayIndex={setSelectedDayIndex}
-        currentWeekNumber={currentWeekNumber}
-        selectedMonth={selectedMonth}
-        setSelectedMonth={setSelectedMonth}
-        selectedYear={selectedYear}
-        setSelectedYear={setSelectedYear}
-        setPendingDateToSelect={setPendingDateToSelect}
-        isAdmin={isAdmin}
-        onPrevWeek={handlePrevWeek}
-        onNextWeek={handleNextWeek}
-        onGoToToday={handleGoToToday}
-      />
+      <>
+        <MobileView
+          schedule={schedule}
+          selectedDayIndex={selectedDayIndex}
+          setSelectedDayIndex={setSelectedDayIndex}
+          currentWeekNumber={currentWeekNumber}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
+          setPendingDateToSelect={setPendingDateToSelect}
+          isAdmin={isAdmin}
+          onPrevWeek={handlePrevWeek}
+          onNextWeek={handleNextWeek}
+          onGoToToday={handleGoToToday}
+          mode={mode}
+          onLoginClick={() => setLoginModalOpen(true)}
+        />
+        {/* Login Modal for mobile */}
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => setLoginModalOpen(false)}
+        />
+      </>
     );
   }
 
@@ -543,6 +563,9 @@ export default function Calendar() {
           onPrevMonth={handlePrevMonth}
           onNextMonth={handleNextMonth}
           onToday={handleToday}
+          mode={mode}
+          onLoginClick={() => setLoginModalOpen(true)}
+          hideTitle={hideTitle}
         />
 
         <div id="calendar-container" className="bg-white rounded-lg shadow-md">
@@ -562,15 +585,14 @@ export default function Calendar() {
           </div>
         </div>
 
-        {isAdmin && (
-          <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} monthlyHourTotals={monthlyHourTotals} />
+        {/* Admin-only features: Summaries, Alerts, DataManager */}
+        {mode === 'admin' && (
+          <>
+            <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} monthlyHourTotals={monthlyHourTotals} />
+            <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} isAdmin={true} />
+            <DataManager isAdmin={true} />
+          </>
         )}
-
-        <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} isAdmin={isAdmin} />
-
-        <DataManager isAdmin={isAdmin} />
-
-        <AdminPanel isAdmin={isAdmin} />
 
         {isReplacementModalOpen && (
           <ReplacementModal
@@ -579,6 +601,12 @@ export default function Calendar() {
             onSave={handleSaveReplacement}
           />
         )}
+
+        {/* Login Modal */}
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => setLoginModalOpen(false)}
+        />
       </div>
     </div>
   );
@@ -588,7 +616,7 @@ export default function Calendar() {
 // Sub-Components for a Cleaner Structure
 // ================================================================================================
 
-function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, isOnline, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday }: {
+function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, isOnline, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday, mode, onLoginClick, hideTitle = false }: {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
@@ -604,22 +632,27 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onToday: () => void;
+  mode: 'public' | 'admin';
+  onLoginClick: () => void;
+  hideTitle?: boolean;
 }) {
-  const { logout, openLoginModal } = useAuth();
+  const { logout } = useAuth();
 
   return (
     <div className="mb-4">
-      {/* Row 1: Title in white card */}
-      <div className="bg-white rounded-lg shadow-md p-3 md:p-4 mb-3 md:mb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[18px] md:text-[22px] font-bold text-[#37352f] tracking-tight">Alde ST Timetable</h1>
-          {!isOnline && (
-            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
-              Offline Mode
-            </span>
-          )}
+      {/* Row 1: Title in white card (hidden in admin panel) */}
+      {!hideTitle && (
+        <div className="bg-white rounded-lg shadow-md p-3 md:p-4 mb-3 md:mb-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-[18px] md:text-[22px] font-bold text-[#37352f] tracking-tight">Alde ST Timetable</h1>
+            {!isOnline && (
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
+                Offline Mode
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Row 2: Month/Year and Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -665,9 +698,9 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
             </button>
           </div>
 
-          {/* Login button (when not admin) */}
-          {!isAdmin && (
-            <button onClick={openLoginModal} className="p-1 md:p-1.5 text-[#91918e] hover:bg-[#f1f1ef] rounded transition-colors">
+          {/* Login button (when in public mode and not admin) */}
+          {mode === 'public' && !isAdmin && (
+            <button onClick={onLoginClick} className="p-1 md:p-1.5 text-[#91918e] hover:bg-[#f1f1ef] rounded transition-colors">
               <User size={16} className="md:w-[18px] md:h-[18px]" />
             </button>
           )}
@@ -995,6 +1028,8 @@ interface MobileViewProps {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onGoToToday: () => void;
+  mode: 'public' | 'admin';
+  onLoginClick: () => void;
 }
 
 function MobileView({
@@ -1011,9 +1046,10 @@ function MobileView({
   onPrevWeek,
   onNextWeek,
   onGoToToday,
+  mode,
+  onLoginClick,
 }: MobileViewProps) {
   const selectedDay = schedule.days[selectedDayIndex];
-  const { openLoginModal } = useAuth();
 
   if (!selectedDay) return null;
 
@@ -1036,7 +1072,7 @@ function MobileView({
   return (
     <div className="min-h-screen bg-gray-100 pb-28 font-sans">
       {/* Header */}
-      <MobileHeader isAdmin={isAdmin} onLoginClick={openLoginModal} />
+      <MobileHeader isAdmin={isAdmin} mode={mode} onLoginClick={onLoginClick} />
 
       {/* Controls: Month/Year + Week Nav */}
       <MobileControls
@@ -1078,13 +1114,13 @@ function MobileView({
   );
 }
 
-function MobileHeader({ isAdmin, onLoginClick }: { isAdmin: boolean; onLoginClick: () => void }) {
+function MobileHeader({ isAdmin, mode, onLoginClick }: { isAdmin: boolean; mode: 'public' | 'admin'; onLoginClick: () => void }) {
   const { logout } = useAuth();
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
       <h1 className="text-xl font-bold text-[#37352f]">Alde ST Timetable</h1>
-      {isAdmin ? (
+      {mode === 'admin' || isAdmin ? (
         <button onClick={logout} className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors">
           <LogOut size={22} />
         </button>
