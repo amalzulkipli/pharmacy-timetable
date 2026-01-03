@@ -51,6 +51,12 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 - **Odd ISO weeks** → Pattern 0
 - **Even ISO weeks** → Pattern 1
 
+**Scheduling Constraints:**
+- Each staff member works exactly 5 days per week
+- Each staff member has exactly 2 consecutive days off per week
+- OFF day patterns can shift dynamically based on leave patterns
+- Minimum coverage requirements must be met for all shifts
+
 **Key Files:**
 - `src/lib/schedule-generator.ts` - Scheduling algorithm with ISO week pattern selection
 - `src/staff-data.ts` - SHIFT_PATTERNS, SHIFT_DEFINITIONS, STAFF_MEMBERS, AVATAR_COLORS
@@ -102,6 +108,8 @@ Main UI (~800+ lines):
 4. **Staff Colors:** `AVATAR_COLORS` in `staff-data.ts` keyed by staffId for consistent coloring.
 
 5. **Public Holidays:** Stored in database, used for RL calculation. On holidays, all staff marked as off.
+
+6. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
 
 ## PDF Generation
 
