@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS, AVATAR_COLORS } from '../staff-data';
-import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, WeeklyHourSummary } from '../types/schedule';
+import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, LogOut, Clock, Calendar as CalendarIcon, Printer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import LoginModal from './LoginModal';
+import StaffHoursOverview from './admin/StaffHoursOverview';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -486,7 +487,6 @@ export default function Calendar({ mode = 'public', hideTitle = false }: Calenda
 
   // --- Memoized Calculations for Performance ---
   const weeklyHourSummaries = useMemo(() => schedule ? getWeeklyHourSummaries(schedule) : [], [schedule]);
-  const allReplacementShifts = useMemo(() => schedule ? schedule.days.flatMap(d => (d.replacementShifts || []).map(r => ({...r, date: d.date}))) : [], [schedule]);
   const monthlyHourTotals = useMemo(() => schedule ? getMonthlyHourTotals(schedule) : {}, [schedule]);
 
   // Mobile: Get current week number for display
@@ -606,12 +606,12 @@ export default function Calendar({ mode = 'public', hideTitle = false }: Calenda
           </div>
         </div>
 
-        {/* Admin-only features: Summaries, Alerts */}
+        {/* Admin-only features: Staff Hours Overview */}
         {mode === 'admin' && (
-          <>
-            <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} monthlyHourTotals={monthlyHourTotals} />
-            <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} isAdmin={true} />
-          </>
+          <StaffHoursOverview
+            weeklyHourSummaries={weeklyHourSummaries}
+            monthlyHourTotals={monthlyHourTotals}
+          />
         )}
 
         {isReplacementModalOpen && (
@@ -776,22 +776,6 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
       </div>
     </div>
   );
-}
-
-function Alerts({ schedule, weeklyHourSummaries, isAdmin }: { schedule: MonthSchedule, weeklyHourSummaries: WeeklyHourSummary[], isAdmin: boolean }) {
-  if (!isAdmin) return null;
-
-  const holidayAlerts = schedule.days.filter(d => d.isHoliday && d.isCurrentMonth);
-  const hourWarnings = weeklyHourSummaries.filter(s => s.isUnderTarget);
-
-  if (holidayAlerts.length === 0 && hourWarnings.length === 0) return null;
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4 mb-4">
-      {hourWarnings.length > 0 && <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-3 rounded-md text-sm"><b>Hour Warnings:</b> {hourWarnings.map(w => `${w.staffName} (W${w.week}: ${w.actualHours}/${w.targetHours}h)`).join(', ')}</div>}
-      {holidayAlerts.length > 0 && <div className="bg-red-100 border-l-4 border-red-500 text-red-800 p-3 rounded-md text-sm"><b>Holidays:</b> {holidayAlerts.map(h => `${format(h.date, 'MMM d')}: ${h.holidayName}`).join(', ')}</div>}
-    </div>
-  )
 }
 
 function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day: DaySchedule, isEditMode: boolean, editBuffer: Record<string, Record<string, string>>, onEditBufferChange: (dayKey: string, staffId: string, value: string) => void }) {
@@ -998,56 +982,6 @@ function ReplacementCard({ replacement }: { replacement: ReplacementShift }) {
           />
         </div>
       </div>
-    </div>
-  )
-}
-
-function Summaries({ weeklyHourSummaries, replacementShifts, monthlyHourTotals }: { 
-  weeklyHourSummaries: WeeklyHourSummary[], 
-  replacementShifts: (ReplacementShift & { date: Date })[], 
-  monthlyHourTotals: { [staffId: string]: { totalActual: number; totalTarget: number; isUnderTarget: boolean } } 
-}) {
-  return (
-    <div className="mt-4 space-y-4">
-      <div className="bg-white rounded-lg shadow-md p-4">
-        <h3 className="text-lg font-semibold mb-2 text-gray-800">Weekly Hour Summary</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          {weeklyHourSummaries.sort((a,b) => a.week - b.week).map(s => (
-            <div key={`${s.staffId}-${s.week}`} className={`text-sm p-2 rounded-md ${s.isUnderTarget ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-              <span className="font-bold">{s.staffName}</span> (W{s.week}): <span className="font-mono">{s.actualHours}h / {s.targetHours}h</span>
-            </div>
-          ))}
-        </div>
-        
-        {/* Monthly Totals Row */}
-        {Object.keys(monthlyHourTotals).length > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <h4 className="text-md font-semibold mb-2 text-gray-700">Monthly Totals</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {Object.entries(monthlyHourTotals).map(([staffId, totals]) => {
-                const staff = STAFF_MEMBERS.find(s => s.id === staffId);
-                if (!staff) return null; // Skip if not a permanent staff member
-                return (
-                  <div key={staffId} className={`text-sm p-2 rounded-md ${totals.isUnderTarget ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-                    <span className="font-bold">{staff.name}:</span> <span className="font-mono">{totals.totalActual}h / {totals.totalTarget}h</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {replacementShifts.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-4">
-           <h3 className="text-lg font-semibold mb-2 text-gray-800">Temporary & Replacement Shifts</h3>
-           <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
-             {replacementShifts.map(r => (
-               <li key={r.id}><strong>{format(r.date, 'EEE, MMM d')}:</strong> {r.tempStaffName} covered for {STAFF_MEMBERS.find(s => s.id === r.originalStaffId)?.name} ({r.workHours}h)</li>
-             ))}
-           </ul>
-        </div>
-      )}
     </div>
   )
 }

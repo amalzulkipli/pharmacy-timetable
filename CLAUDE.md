@@ -77,10 +77,7 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 |-------|---------|--------|
 | `/` | Public calendar view (read-only) | Public |
 | `/login` | Admin login page (modal style with blurred background) | Public |
-| `/admin` | Admin dashboard (redirects to schedule) | Protected |
-| `/admin/schedule` | Schedule editing with full calendar | Protected |
-| `/admin/staff` | Staff management (CRUD) | Protected |
-| `/admin/leave` | Leave overview and tracking | Protected |
+| `/admin` | Admin dashboard with tabbed interface (Timetable/Leave/Staff) | Protected |
 
 **Route Protection:** `src/middleware.ts` protects `/admin/*` routes using cookies. Redirects to `/login` if not authenticated.
 
@@ -130,7 +127,7 @@ Main UI (~1400 lines), accepts `mode` prop:
 
 2. **Prisma Client Location:** Generated to `src/generated/prisma/` per schema config. Import from `@/generated/prisma`.
 
-3. **Offline Support:** `useScheduleOverridesDB` caches to localStorage and queues changes when offline.
+3. **Offline Support:** `useScheduleOverridesDB` caches to localStorage and queues changes when offline. Cache keys: `pharmacy-cache-YYYY-MM` (read cache), `pharmacy-pending-YYYY-MM` (pending changes).
 
 4. **Staff Colors:** `STAFF_COLORS` (card styling) and `AVATAR_COLORS` (mobile avatars) in `staff-data.ts`, keyed by staffId.
 
