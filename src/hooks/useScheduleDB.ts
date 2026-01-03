@@ -6,7 +6,7 @@ import type { ShiftDefinition, ReplacementShift } from '@/types/schedule';
 interface OverrideData {
   shift: ShiftDefinition | null;
   isLeave: boolean;
-  leaveType?: 'AL' | 'RL' | 'EL';
+  leaveType?: 'AL' | 'RL' | 'EL' | 'ML';
 }
 
 type MonthOverrides = Record<string, OverrideData | ReplacementShift[]>;

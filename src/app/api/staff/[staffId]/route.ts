@@ -34,6 +34,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       weeklyHours: staff.weeklyHours,
       defaultOffDays: parseOffDays(staff.defaultOffDays),
       alEntitlement: staff.alEntitlement,
+      mlEntitlement: staff.mlEntitlement,
       isActive: staff.isActive,
     });
   } catch (error) {
@@ -47,7 +48,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { staffId } = await params;
     const body = await request.json();
-    const { name, role, weeklyHours, defaultOffDays, alEntitlement, isActive } = body;
+    const { name, role, weeklyHours, defaultOffDays, alEntitlement, mlEntitlement, isActive } = body;
 
     // Build update data
     const updateData: Record<string, unknown> = {};
@@ -56,6 +57,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (weeklyHours !== undefined) updateData.weeklyHours = weeklyHours;
     if (defaultOffDays !== undefined) updateData.defaultOffDays = JSON.stringify(defaultOffDays);
     if (alEntitlement !== undefined) updateData.alEntitlement = alEntitlement;
+    if (mlEntitlement !== undefined) updateData.mlEntitlement = mlEntitlement;
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const staff = await prisma.staff.update({
@@ -63,12 +65,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       data: updateData,
     });
 
-    // If AL entitlement changed, update current year's leave balance
-    if (alEntitlement !== undefined) {
-      const currentYear = new Date().getFullYear();
+    // If leave entitlements changed, update current year's leave balance
+    const currentYear = new Date().getFullYear();
+    const balanceUpdate: Record<string, number> = {};
+    if (alEntitlement !== undefined) balanceUpdate.alEntitlement = alEntitlement;
+    if (mlEntitlement !== undefined) balanceUpdate.mlEntitlement = mlEntitlement;
+
+    if (Object.keys(balanceUpdate).length > 0) {
       await prisma.leaveBalance.updateMany({
         where: { staffId, year: currentYear },
-        data: { alEntitlement },
+        data: balanceUpdate,
       });
     }
 
@@ -79,6 +85,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       weeklyHours: staff.weeklyHours,
       defaultOffDays: parseOffDays(staff.defaultOffDays),
       alEntitlement: staff.alEntitlement,
+      mlEntitlement: staff.mlEntitlement,
       isActive: staff.isActive,
     });
   } catch (error) {

@@ -25,6 +25,7 @@ export async function GET() {
       weeklyHours: s.weeklyHours,
       defaultOffDays: parseOffDays(s.defaultOffDays),
       alEntitlement: s.alEntitlement,
+      mlEntitlement: s.mlEntitlement,
       isActive: s.isActive,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
@@ -41,7 +42,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { staffId, name, role, weeklyHours, defaultOffDays, alEntitlement } = body;
+    const { staffId, name, role, weeklyHours, defaultOffDays, alEntitlement, mlEntitlement } = body;
 
     // Validate required fields (defaultOffDays is optional, defaults to [0, 6])
     if (!staffId || !name || !role || weeklyHours === undefined) {
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
         weeklyHours,
         defaultOffDays: JSON.stringify(defaultOffDays || [0, 6]),
         alEntitlement: alEntitlement || 14,
+        mlEntitlement: mlEntitlement || 14,
       },
     });
 
@@ -81,6 +83,8 @@ export async function POST(request: NextRequest) {
         alUsed: 0,
         rlEarned: 0,
         rlUsed: 0,
+        mlEntitlement: staff.mlEntitlement,
+        mlUsed: 0,
       },
     });
 
@@ -92,6 +96,7 @@ export async function POST(request: NextRequest) {
         weeklyHours: staff.weeklyHours,
         defaultOffDays: parseOffDays(staff.defaultOffDays),
         alEntitlement: staff.alEntitlement,
+        mlEntitlement: staff.mlEntitlement,
       },
       { status: 201 }
     );

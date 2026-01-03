@@ -18,6 +18,7 @@ interface StaffLeaveCardProps {
   staffRole: string;
   al: { entitlement: number; used: number; remaining: number };
   rl: { earned: number; used: number; remaining: number };
+  ml: { entitlement: number; used: number; remaining: number };
   history: LeaveHistoryEntry[];
 }
 
@@ -50,6 +51,8 @@ function getLeaveTypeBadge(type: string) {
       return { label: 'Replacement', className: 'bg-purple-100 text-purple-700' };
     case 'EL':
       return { label: 'Emergency', className: 'bg-orange-100 text-orange-700' };
+    case 'ML':
+      return { label: 'Medical', className: 'bg-green-100 text-green-700' };
     default:
       return { label: type, className: 'bg-gray-100 text-gray-700' };
   }
@@ -60,12 +63,14 @@ export default function StaffLeaveCard({
   staffRole,
   al,
   rl,
+  ml,
   history,
 }: StaffLeaveCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const alPercentRemaining = al.entitlement > 0 ? (al.remaining / al.entitlement) * 100 : 0;
   const rlPercentRemaining = rl.earned > 0 ? (rl.remaining / rl.earned) * 100 : 0;
+  const mlPercentRemaining = ml.entitlement > 0 ? (ml.remaining / ml.entitlement) * 100 : 0;
 
   return (
     <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
@@ -126,6 +131,26 @@ export default function StaffLeaveCard({
           </div>
         </div>
 
+        {/* Medical Leave */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-sm text-gray-600">Medical Leave</span>
+            <span className="text-lg font-semibold text-gray-900">
+              {Math.floor(ml.remaining)} <span className="text-sm font-normal text-gray-500">LEFT</span>
+            </span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-2.5">
+            <div
+              className="h-2.5 rounded-full bg-green-500 transition-all duration-300"
+              style={{ width: `${Math.max(mlPercentRemaining, 0)}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs text-gray-500 mt-1.5">
+            <span>{Math.floor(ml.used)} used</span>
+            <span>{ml.entitlement} total</span>
+          </div>
+        </div>
+
         {/* View History Button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -160,7 +185,7 @@ export default function StaffLeaveCard({
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {entry.leaveType === 'AL' ? 'Annual Leave' : entry.leaveType === 'RL' ? 'Replacement Leave' : 'Emergency Leave'}
+                          {entry.leaveType === 'AL' ? 'Annual Leave' : entry.leaveType === 'RL' ? 'Replacement Leave' : entry.leaveType === 'ML' ? 'Medical Leave' : 'Emergency Leave'}
                         </div>
                         <div className="text-xs text-gray-500">1 day</div>
                       </div>

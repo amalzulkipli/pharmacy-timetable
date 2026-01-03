@@ -34,7 +34,7 @@ export interface DaySchedule {
       shift: ShiftDefinition | null;
       isOverride: boolean;
       isLeave: boolean;
-      leaveType?: 'AL' | 'RL' | 'EL';
+      leaveType?: 'AL' | 'RL' | 'EL' | 'ML';
     };
   };
   replacementShifts?: ReplacementShift[];

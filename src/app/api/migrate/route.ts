@@ -171,9 +171,10 @@ export async function POST(request: NextRequest) {
               staffId: member.staffId,
               year,
               alEntitlement: member.alEntitlement,
+              mlEntitlement: member.mlEntitlement,
               rlEarned,
             },
-            update: { rlEarned },
+            update: { rlEarned, mlEntitlement: member.mlEntitlement },
           });
           results.balancesInitialized++;
         } catch (error) {

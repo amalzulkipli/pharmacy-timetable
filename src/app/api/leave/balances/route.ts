@@ -16,6 +16,11 @@ export interface LeaveBalanceSummary {
     used: number;
     remaining: number;
   };
+  ml: {
+    entitlement: number;
+    used: number;
+    remaining: number;
+  };
 }
 
 // GET /api/leave/balances?year=2025
@@ -46,6 +51,11 @@ export async function GET(request: NextRequest) {
         earned: b.rlEarned,
         used: b.rlUsed,
         remaining: b.rlEarned - b.rlUsed,
+      },
+      ml: {
+        entitlement: b.mlEntitlement,
+        used: b.mlUsed,
+        remaining: b.mlEntitlement - b.mlUsed,
       },
     }));
 
@@ -81,9 +91,12 @@ export async function POST(request: NextRequest) {
           alUsed: 0,
           rlEarned: 0,
           rlUsed: 0,
+          mlEntitlement: member.mlEntitlement,
+          mlUsed: 0,
         },
         update: {
           alEntitlement: member.alEntitlement,
+          mlEntitlement: member.mlEntitlement,
         },
       });
     }

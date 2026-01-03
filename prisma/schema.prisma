@@ -23,6 +23,7 @@ model Staff {
   weeklyHours    Int
   defaultOffDays String // JSON array string: "[0,6]" for Sat/Sun (0=Sun, 6=Sat)
   alEntitlement  Int      @default(14) // Annual leave days per year
+  mlEntitlement  Int      @default(14) // Medical leave days per year
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -47,7 +48,7 @@ model ScheduleOverride {
   // Override data
   shiftType String? // e.g., "11h", "9h_early", null for off
   isLeave   Boolean @default(false)
-  leaveType String? // "AL" | "RL" | "EL" | null
+  leaveType String? // "AL" | "RL" | "EL" | "ML" | null
 
   // Metadata
   createdAt DateTime @default(now())
@@ -98,6 +99,10 @@ model LeaveBalance {
   rlEarned Float @default(0) // Auto-calculated from public holidays
   rlUsed   Float @default(0)
 
+  // Medical Leave
+  mlEntitlement Int   @default(14) // Copied from Staff at year start
+  mlUsed        Float @default(0)
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -114,7 +119,7 @@ model LeaveHistory {
   id        String   @id @default(cuid())
   staffId   String
   date      DateTime // The leave date
-  leaveType String // "AL" | "RL" | "EL"
+  leaveType String // "AL" | "RL" | "EL" | "ML"
   status    String   @default("approved") // "approved" | "pending" | "cancelled"
   notes     String?
 

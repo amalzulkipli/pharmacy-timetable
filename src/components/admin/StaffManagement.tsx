@@ -9,6 +9,7 @@ interface Staff {
   role: string;
   weeklyHours: number;
   alEntitlement: number;
+  mlEntitlement: number;
   isActive: boolean;
 }
 
@@ -27,6 +28,7 @@ export default function StaffManagement() {
     role: 'Pharmacist',
     weeklyHours: 45,
     alEntitlement: 14,
+    mlEntitlement: 14,
   });
 
   // Fetch staff list
@@ -56,6 +58,7 @@ export default function StaffManagement() {
       role: s.role,
       weeklyHours: s.weeklyHours,
       alEntitlement: s.alEntitlement,
+      mlEntitlement: s.mlEntitlement,
     });
   };
 
@@ -68,6 +71,7 @@ export default function StaffManagement() {
       role: 'Pharmacist',
       weeklyHours: 45,
       alEntitlement: 14,
+      mlEntitlement: 14,
     });
   };
 
@@ -208,6 +212,15 @@ export default function StaffManagement() {
                 className="w-full px-3 py-2 border rounded-md text-sm text-gray-900"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">ML Entitlement (days/year)</label>
+              <input
+                type="number"
+                value={formData.mlEntitlement}
+                onChange={(e) => setFormData((p) => ({ ...p, mlEntitlement: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 border rounded-md text-sm text-gray-900"
+              />
+            </div>
           </div>
           <div className="flex justify-end space-x-2 mt-4">
             <button
@@ -238,6 +251,7 @@ export default function StaffManagement() {
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hours/Week</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">AL Days</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ML Days</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
           </thead>
@@ -249,6 +263,7 @@ export default function StaffManagement() {
                   <td className="px-4 py-3 text-sm text-gray-600">{s.role}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{s.weeklyHours}h</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{s.alEntitlement} days</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{s.mlEntitlement} days</td>
                   <td className="px-4 py-3 text-sm">
                     <div className="flex space-x-2">
                       <button

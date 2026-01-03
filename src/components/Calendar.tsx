@@ -63,7 +63,7 @@ export default function Calendar() {
   const [editBuffer, setEditBuffer] = useState<Record<string, Record<string, string>>>({});
 
   // Type for override structure
-  type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' } | ReplacementShift[]>;
+  type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' } | ReplacementShift[]>;
 
   // Use database-backed hook for overrides (with localStorage fallback)
   const {
@@ -193,7 +193,7 @@ export default function Calendar() {
             }
           } else {
             const staffId = staffIdOrAction;
-            const override = overrides[dayKey][staffId] as { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' };
+            const override = overrides[dayKey][staffId] as { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' };
             if (override && typeof override === 'object' && !Array.isArray(override)) {
               finalDay.staffShifts[staffId] = {
                 ...finalDay.staffShifts[staffId],
@@ -260,11 +260,11 @@ export default function Calendar() {
 
         let newShift: ShiftDefinition | null = null;
         let isLeave = false;
-        let leaveType: 'AL' | 'RL' | 'EL' | undefined = undefined;
+        let leaveType: 'AL' | 'RL' | 'EL' | 'ML' | undefined = undefined;
 
         if (value.startsWith('leave')) {
           isLeave = true;
-          leaveType = value.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL';
+          leaveType = value.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML';
         } else if (value !== 'off') {
           newShift = SHIFT_DEFINITIONS[value];
         }
@@ -832,6 +832,7 @@ function ShiftDropdown({ value, onChange }: { value: string, onChange: (value: s
         <option value="leave_al">Annual Leave</option>
         <option value="leave_rl">Replacement Leave</option>
         <option value="leave_el">Emergency Leave</option>
+        <option value="leave_ml">Medical Leave</option>
       </optgroup>
       <optgroup label="Actions">
          <option value="add_replacement">Add Replacement...</option>

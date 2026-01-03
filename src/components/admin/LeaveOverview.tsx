@@ -19,6 +19,11 @@ interface LeaveBalance {
     used: number;
     remaining: number;
   };
+  ml: {
+    entitlement: number;
+    used: number;
+    remaining: number;
+  };
 }
 
 interface LeaveHistoryEntry {
@@ -163,6 +168,7 @@ export default function LeaveOverview() {
             staffRole={balance.staffRole}
             al={balance.al}
             rl={balance.rl}
+            ml={balance.ml}
             history={historyByStaff[balance.staffId] || []}
           />
         ))}
@@ -182,6 +188,8 @@ export default function LeaveOverview() {
           <br />
           <strong>RL:</strong> Replacement Leave earned when public holidays fall on default off days.
           Use &quot;Recalculate RL&quot; to update based on holidays.
+          <br />
+          <strong>ML:</strong> Medical Leave entitlement set per staff member.
         </p>
       </div>
     </div>
