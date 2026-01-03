@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { AVATAR_COLORS } from '@/staff-data';
 
 interface LeaveHistoryEntry {
   id: string;
@@ -22,17 +23,8 @@ interface StaffLeaveCardProps {
   history: LeaveHistoryEntry[];
 }
 
-// Avatar colors based on staff initials
-const AVATAR_COLORS: Record<string, string> = {
-  FA: 'bg-blue-500',
-  SI: 'bg-green-500',
-  PA: 'bg-pink-400',
-  AM: 'bg-purple-500',
-};
-
-function getAvatarColor(name: string): string {
-  const initials = name.substring(0, 2).toUpperCase();
-  return AVATAR_COLORS[initials] || 'bg-gray-500';
+function getAvatarColor(staffId: string): string {
+  return AVATAR_COLORS[staffId]?.bg || 'bg-gray-500';
 }
 
 function getInitials(name: string): string {
@@ -59,6 +51,7 @@ function getLeaveTypeBadge(type: string) {
 }
 
 export default function StaffLeaveCard({
+  staffId,
   staffName,
   staffRole,
   al,
@@ -80,7 +73,7 @@ export default function StaffLeaveCard({
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center space-x-3">
             <div
-              className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(staffName)}`}
+              className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(staffId)}`}
             >
               {getInitials(staffName)}
             </div>

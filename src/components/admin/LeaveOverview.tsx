@@ -136,14 +136,14 @@ export default function LeaveOverview() {
             onClick={handleRecalculateRL}
             disabled={isRecalculating}
             className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 disabled:opacity-50"
-            title="Recalculate RL based on public holidays"
+            title="Refresh leave balances and recalculate RL"
           >
             {isRecalculating ? (
               <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
             ) : (
               <RefreshCw className="w-4 h-4 mr-1.5" />
             )}
-            Recalculate RL
+            Refresh
           </button>
         </div>
       </div>
@@ -187,7 +187,7 @@ export default function LeaveOverview() {
           <strong>AL:</strong> Annual Leave entitlement set per staff member.
           <br />
           <strong>RL:</strong> Replacement Leave earned when public holidays fall on default off days.
-          Use &quot;Recalculate RL&quot; to update based on holidays.
+          Use &quot;Refresh&quot; to update based on holidays.
           <br />
           <strong>ML:</strong> Medical Leave entitlement set per staff member.
         </p>
