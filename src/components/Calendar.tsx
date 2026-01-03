@@ -658,18 +658,35 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
 }) {
   return (
     <div className="mb-4">
-      {/* Row 1: Title in white card (hidden in admin panel) */}
+      {/* Row 1: Header bar with logo and login (hidden in admin panel) */}
       {!hideTitle && (
-        <div className="bg-white rounded-lg shadow-md p-3 md:p-4 mb-3 md:mb-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-[18px] md:text-[22px] font-bold text-[#37352f] tracking-tight">Alde ST Timetable</h1>
-            {!isOnline && (
-              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">
-                Offline Mode
-              </span>
+        <header className="bg-white border-b border-gray-200 -mx-4 -mt-4 px-4 mb-4">
+          <div className="flex items-center justify-between h-14">
+            {/* Left: Logo/Title */}
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-600 p-1.5 rounded-lg">
+                <CalendarIcon className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-bold text-lg text-gray-900">Alde ST Timetable</span>
+              {!isOnline && (
+                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full ml-2">
+                  Offline
+                </span>
+              )}
+            </div>
+
+            {/* Right: Login button */}
+            {mode === 'public' && !isAdmin && (
+              <button
+                onClick={onLoginClick}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">Login</span>
+              </button>
             )}
           </div>
-        </div>
+        </header>
       )}
 
       {/* Row 2: Month/Year and Navigation */}
@@ -721,13 +738,6 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
               <ChevronRight size={16} className="md:w-[18px] md:h-[18px]" />
             </button>
           </div>
-
-          {/* Login button (when in public mode and not admin) */}
-          {mode === 'public' && !isAdmin && (
-            <button onClick={onLoginClick} className="p-1 md:p-1.5 text-[#91918e] hover:bg-[#f1f1ef] rounded transition-colors">
-              <User size={16} className="md:w-[18px] md:h-[18px]" />
-            </button>
-          )}
 
           {/* Admin buttons */}
           {isAdmin && (
