@@ -19,6 +19,11 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<Tab>('timetable');
   const { logout } = useAuth();
 
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/';
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header with logo, tabs, and logout */}
@@ -57,7 +62,7 @@ export default function AdminPanel() {
 
             {/* Right: Logout */}
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <LogOut className="h-4 w-4" />

@@ -8,7 +8,6 @@ import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, User, LogOut, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
-import DataManager from './DataManager';
 import LoginModal from './LoginModal';
 
 
@@ -585,12 +584,11 @@ export default function Calendar({ mode = 'public', hideTitle = false }: Calenda
           </div>
         </div>
 
-        {/* Admin-only features: Summaries, Alerts, DataManager */}
+        {/* Admin-only features: Summaries, Alerts */}
         {mode === 'admin' && (
           <>
             <Summaries weeklyHourSummaries={weeklyHourSummaries} replacementShifts={allReplacementShifts} monthlyHourTotals={monthlyHourTotals} />
             <Alerts schedule={schedule} weeklyHourSummaries={weeklyHourSummaries} isAdmin={true} />
-            <DataManager isAdmin={true} />
           </>
         )}
 
