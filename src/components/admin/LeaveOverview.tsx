@@ -113,18 +113,18 @@ export default function LeaveOverview() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
+    <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center space-x-2">
           <LayoutGrid className="w-5 h-5 text-gray-600" />
           <h3 className="text-lg font-semibold text-gray-900">Staff Leave Dashboard</h3>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2">
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="px-3 py-2 border rounded-md text-sm text-gray-900"
+            className="flex-1 sm:flex-none px-4 py-3 border rounded-lg text-sm text-gray-900 min-h-[48px]"
           >
             {years.map((year) => (
               <option key={year} value={year}>
@@ -135,15 +135,15 @@ export default function LeaveOverview() {
           <button
             onClick={handleRecalculateRL}
             disabled={isRecalculating}
-            className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 disabled:opacity-50"
+            className="flex items-center justify-center px-4 py-3 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50 min-h-[48px] min-w-[48px]"
             title="Refresh leave balances and recalculate RL"
           >
             {isRecalculating ? (
-              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <RefreshCw className="w-4 h-4 mr-1.5" />
+              <RefreshCw className="w-5 h-5" />
             )}
-            Refresh
+            <span className="hidden sm:inline ml-2">Refresh</span>
           </button>
         </div>
       </div>

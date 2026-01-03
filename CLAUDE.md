@@ -106,9 +106,10 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 
 ### Admin Components (`src/components/admin/`)
 
-- `AdminNavigation.tsx` - Top navigation bar for admin section
+- `AdminPanel.tsx` - Tabbed container (Timetable/Leave/Staff tabs) for admin dashboard
 - `LeaveOverview.tsx` - Staff leave dashboard with balance cards
 - `StaffLeaveCard.tsx` - Individual staff leave display with history accordion
+- `StaffHoursOverview.tsx` - Weekly hours summary for staff
 - `StaffManagement.tsx` - CRUD for staff members and entitlements
 
 ### Calendar Component (`src/components/Calendar.tsx`)

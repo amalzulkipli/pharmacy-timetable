@@ -148,10 +148,10 @@ export default function StaffLeaveCard({
         {/* View History Button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center justify-between w-full text-sm text-blue-600 hover:text-blue-700 pt-1"
+          className="flex items-center justify-between w-full text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 py-3 -mx-2 px-2 rounded-lg transition-colors min-h-[48px]"
         >
-          <span>View History {history.length > 0 && `(${history.length})`}</span>
-          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <span className="font-medium">View History {history.length > 0 && `(${history.length})`}</span>
+          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
         </button>
       </div>
 
