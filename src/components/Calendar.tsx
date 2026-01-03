@@ -5,7 +5,7 @@ import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, ex
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS, AVATAR_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, WeeklyHourSummary } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, User, LogOut, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogOut, Clock, Calendar as CalendarIcon, Printer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import LoginModal from './LoginModal';
@@ -656,8 +656,6 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   onLoginClick: () => void;
   hideTitle?: boolean;
 }) {
-  const { logout } = useAuth();
-
   return (
     <div className="mb-4">
       {/* Row 1: Title in white card (hidden in admin panel) */}
@@ -677,21 +675,27 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
       {/* Row 2: Month/Year and Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         {/* Left: Month/Year */}
-        <div className="flex items-center">
-          <select
-            value={selectedMonth}
-            onChange={e => setSelectedMonth(Number(e.target.value))}
-            className="text-[14px] md:text-[15px] font-medium text-[#37352f] bg-transparent border-none cursor-pointer hover:bg-[#f1f1ef] rounded px-1 md:px-2 py-1 -ml-1 focus:outline-none"
-          >
-            {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={e => setSelectedYear(Number(e.target.value))}
-            className="text-[14px] md:text-[15px] font-medium text-[#37352f] bg-transparent border-none cursor-pointer hover:bg-[#f1f1ef] rounded px-1 md:px-2 py-1 focus:outline-none"
-          >
-            {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+        <div className="flex items-center gap-1">
+          <div className="relative flex items-center">
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(Number(e.target.value))}
+              className="appearance-none text-[14px] md:text-[15px] font-medium text-[#37352f] bg-transparent border-none cursor-pointer hover:bg-[#f1f1ef] rounded pl-2 pr-6 py-1 focus:outline-none"
+            >
+              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+            <ChevronDown className="absolute right-1 h-4 w-4 text-gray-500 pointer-events-none" />
+          </div>
+          <div className="relative flex items-center">
+            <select
+              value={selectedYear}
+              onChange={e => setSelectedYear(Number(e.target.value))}
+              className="appearance-none text-[14px] md:text-[15px] font-medium text-[#37352f] bg-transparent border-none cursor-pointer hover:bg-[#f1f1ef] rounded pl-2 pr-6 py-1 focus:outline-none"
+            >
+              {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <ChevronDown className="absolute right-1 h-4 w-4 text-gray-500 pointer-events-none" />
+          </div>
         </div>
 
         {/* Right: Navigation + Login/Admin buttons */}
@@ -729,18 +733,33 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
           {isAdmin && (
             <>
               <div className="w-px h-4 bg-[#e3e2e0] mx-0.5 md:mx-1 hidden md:block" />
+              {/* CSV Button */}
+              <button onClick={onDownloadCSV} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <Download size={14}/>
+                <span>CSV</span>
+              </button>
+              {/* PDF Button */}
+              <button onClick={onDownloadPDF} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                <Printer size={14}/>
+                <span>PDF</span>
+              </button>
+              {/* Edit Mode / Save / Cancel Buttons */}
               {isEditMode ? (
                 <>
-                  <button onClick={onSaveChanges} className="text-[12px] md:text-[14px] text-white bg-[#2383e2] hover:bg-[#0b6bcb] px-2 md:px-3 py-1 rounded transition-colors flex items-center gap-1"><Save size={12} className="md:w-[14px] md:h-[14px]"/> <span className="hidden sm:inline">Save</span></button>
-                  <button onClick={onCancelEdit} className="text-[12px] md:text-[14px] text-[#91918e] hover:bg-[#f1f1ef] px-2 md:px-3 py-1 rounded transition-colors flex items-center gap-1"><X size={12} className="md:w-[14px] md:h-[14px]"/></button>
+                  <button onClick={onSaveChanges} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <Save size={14}/>
+                    <span className="hidden sm:inline">Save</span>
+                  </button>
+                  <button onClick={onCancelEdit} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
+                    <X size={16}/>
+                  </button>
                 </>
               ) : (
-                <button onClick={onEnterEditMode} className="text-[12px] md:text-[14px] text-white bg-[#2383e2] hover:bg-[#0b6bcb] px-2 md:px-3 py-1 rounded transition-colors flex items-center gap-1"><Edit size={12} className="md:w-[14px] md:h-[14px]"/> <span className="hidden sm:inline">Edit</span></button>
+                <button onClick={onEnterEditMode} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                  <Edit size={14}/>
+                  <span className="hidden sm:inline">Edit Mode</span>
+                </button>
               )}
-              <button onClick={onDownloadCSV} className="text-[12px] md:text-[14px] text-[#91918e] hover:bg-[#f1f1ef] p-1 md:px-2 md:py-1 rounded transition-colors hidden sm:block"><Download size={14}/></button>
-              <button onClick={onDownloadPDF} className="text-[12px] md:text-[14px] text-[#91918e] hover:bg-[#f1f1ef] p-1 md:px-2 md:py-1 rounded transition-colors">PDF</button>
-              <div className="w-px h-4 bg-[#e3e2e0] mx-0.5 md:mx-1 hidden sm:block" />
-              <button onClick={logout} className="text-[12px] md:text-[14px] text-[#91918e] hover:bg-[#f1f1ef] p-1 md:px-2 md:py-1 rounded transition-colors"><LogOut size={14}/></button>
             </>
           )}
         </div>

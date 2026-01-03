@@ -20,14 +20,23 @@ npx prisma studio                                # Open database GUI
 npx prisma db push                               # Push schema changes (dev only)
 ```
 
+**Note:** Prisma client is generated to `src/generated/prisma/` (not the default location).
+
 ### TypeScript
 The project uses TypeScript with strict mode. Path alias: `@/*` maps to `./src/*`
+
+### Environment Variables
+Required in `.env`:
+```bash
+DATABASE_URL="file:./prisma/pharmacy.db"   # SQLite database path
+NEXT_PUBLIC_ADMIN_PASSWORD=<password>       # Admin login password
+```
 
 ## Architecture
 
 ### Tech Stack
 - **Framework:** Next.js 15.5+ (App Router, Turbopack)
-- **Database:** Prisma ORM with SQLite (`prisma/prisma/pharmacy.db`)
+- **Database:** Prisma ORM with SQLite (`prisma/pharmacy.db`)
 - **UI:** React 19, TypeScript, Tailwind CSS v4
 - **PDF Generation:** Puppeteer (server-side)
 - **Date Utilities:** date-fns
@@ -119,11 +128,11 @@ Main UI (~1400 lines), accepts `mode` prop:
 
 1. **Leave Balance Year Handling:** When saving leave, balance updates use `leaveDate.getFullYear()` not the calendar view year. Critical for cross-year boundaries.
 
-2. **Database Location:** Actual database is at `prisma/prisma/pharmacy.db` (note the nested path).
+2. **Prisma Client Location:** Generated to `src/generated/prisma/` per schema config. Import from `@/generated/prisma`.
 
 3. **Offline Support:** `useScheduleOverridesDB` caches to localStorage and queues changes when offline.
 
-4. **Staff Colors:** `AVATAR_COLORS` in `staff-data.ts` keyed by staffId for consistent coloring.
+4. **Staff Colors:** `STAFF_COLORS` (card styling) and `AVATAR_COLORS` (mobile avatars) in `staff-data.ts`, keyed by staffId.
 
 5. **Public Holidays:** Stored in database, used for RL calculation. On holidays, all staff marked as off.
 
