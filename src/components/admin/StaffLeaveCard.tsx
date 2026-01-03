@@ -35,18 +35,18 @@ function getInitials(name: string): string {
   return name.substring(0, 2).toUpperCase();
 }
 
-function getLeaveTypeBadge(type: string) {
+function getLeaveTypeLabel(type: string) {
   switch (type) {
     case 'AL':
-      return { label: 'Annual', className: 'bg-blue-100 text-blue-700' };
+      return 'Annual';
     case 'RL':
-      return { label: 'Replacement', className: 'bg-purple-100 text-purple-700' };
+      return 'Replacement';
     case 'EL':
-      return { label: 'Emergency', className: 'bg-orange-100 text-orange-700' };
+      return 'Emergency';
     case 'ML':
-      return { label: 'Medical', className: 'bg-green-100 text-green-700' };
+      return 'Medical';
     default:
-      return { label: type, className: 'bg-gray-100 text-gray-700' };
+      return type;
   }
 }
 
@@ -61,84 +61,85 @@ export default function StaffLeaveCard({
 }: StaffLeaveCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const alPercentRemaining = al.entitlement > 0 ? (al.remaining / al.entitlement) * 100 : 0;
-  const rlPercentRemaining = rl.earned > 0 ? (rl.remaining / rl.earned) * 100 : 0;
-  const mlPercentRemaining = ml.entitlement > 0 ? (ml.remaining / ml.entitlement) * 100 : 0;
+  const alPercentUsed = al.entitlement > 0 ? (al.used / al.entitlement) * 100 : 0;
+  const rlPercentUsed = rl.earned > 0 ? (rl.used / rl.earned) * 100 : 0;
+  const mlPercentUsed = ml.entitlement > 0 ? (ml.used / ml.entitlement) * 100 : 0;
 
   return (
-    <div className="bg-white border rounded-xl shadow-sm overflow-hidden">
-      {/* Card Header */}
+    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      {/* Card Content */}
       <div className="p-5">
         {/* Staff Info */}
-        <div className="flex items-start justify-between mb-5">
-          <div className="flex items-center space-x-3">
-            <div
-              className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(staffId)}`}
-            >
-              {getInitials(staffName)}
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-900">{staffName}</h4>
-              <p className="text-sm text-gray-500">{staffRole}</p>
-            </div>
+        <div className="flex items-center space-x-3 mb-6">
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(staffId)}`}
+          >
+            {getInitials(staffName)}
+          </div>
+          <div>
+            <h4 className="font-semibold text-gray-900">{staffName}</h4>
+            <p className="text-sm text-gray-500">{staffRole}</p>
           </div>
         </div>
 
         {/* Annual Leave */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">Annual Leave</span>
-            <span className="text-lg font-semibold text-gray-900">
-              {Math.floor(al.remaining)} <span className="text-sm font-normal text-gray-500">LEFT</span>
+            <span className="text-sm">
+              <span className="font-semibold text-gray-900">{Math.floor(al.remaining)}</span>
+              <span className="text-gray-400 text-xs ml-0.5">LEFT</span>
             </span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2.5">
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
             <div
-              className="h-2.5 rounded-full bg-blue-500 transition-all duration-300"
-              style={{ width: `${Math.max(alPercentRemaining, 0)}%` }}
+              className="h-1.5 rounded-full bg-gray-300 transition-all duration-300"
+              style={{ width: `${Math.min(alPercentUsed, 100)}%` }}
             />
           </div>
-          <div className="flex items-center justify-between text-xs text-gray-500 mt-1.5">
+          <div className="flex items-center justify-between text-xs text-gray-400 mt-1.5">
             <span>{Math.floor(al.used)} used</span>
             <span>{al.entitlement} total</span>
           </div>
         </div>
 
         {/* Replacement Leave */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">Replacement Leave</span>
-            <span className="text-lg font-semibold text-gray-900">
-              {Math.floor(rl.remaining)} <span className="text-sm font-normal text-gray-500">LEFT</span>
+            <span className="text-sm">
+              <span className="font-semibold text-gray-900">{Math.floor(rl.remaining)}</span>
+              <span className="text-gray-400 text-xs ml-0.5">LEFT</span>
             </span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2.5">
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
             <div
-              className="h-2.5 rounded-full bg-purple-500 transition-all duration-300"
-              style={{ width: `${Math.max(rlPercentRemaining, 0)}%` }}
+              className="h-1.5 rounded-full bg-gray-300 transition-all duration-300"
+              style={{ width: `${Math.min(rlPercentUsed, 100)}%` }}
             />
           </div>
-          <div className="flex items-center justify-between text-xs text-gray-500 mt-1.5">
+          <div className="flex items-center justify-between text-xs text-gray-400 mt-1.5">
             <span>{Math.floor(rl.used)} used</span>
             <span>{Math.floor(rl.earned)} earned</span>
           </div>
         </div>
 
         {/* Medical Leave */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">Medical Leave</span>
-            <span className="text-lg font-semibold text-gray-900">
-              {Math.floor(ml.remaining)} <span className="text-sm font-normal text-gray-500">LEFT</span>
+            <span className="text-sm">
+              <span className="font-semibold text-gray-900">{Math.floor(ml.remaining)}</span>
+              <span className="text-gray-400 text-xs ml-0.5">LEFT</span>
             </span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2.5">
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
             <div
-              className="h-2.5 rounded-full bg-green-500 transition-all duration-300"
-              style={{ width: `${Math.max(mlPercentRemaining, 0)}%` }}
+              className="h-1.5 rounded-full bg-gray-300 transition-all duration-300"
+              style={{ width: `${Math.min(mlPercentUsed, 100)}%` }}
             />
           </div>
-          <div className="flex items-center justify-between text-xs text-gray-500 mt-1.5">
+          <div className="flex items-center justify-between text-xs text-gray-400 mt-1.5">
             <span>{Math.floor(ml.used)} used</span>
             <span>{ml.entitlement} total</span>
           </div>
@@ -147,7 +148,7 @@ export default function StaffLeaveCard({
         {/* View History Button */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center justify-between w-full text-sm text-blue-600 hover:text-blue-700 pt-2"
+          className="flex items-center justify-between w-full text-sm text-blue-600 hover:text-blue-700 pt-1"
         >
           <span>View History {history.length > 0 && `(${history.length})`}</span>
           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -156,42 +157,40 @@ export default function StaffLeaveCard({
 
       {/* Expanded History Section */}
       {isExpanded && (
-        <div className="border-t bg-gray-50 px-5 py-4">
-          <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <div className="border-t border-gray-100 px-5 py-4">
+          <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">
             Recent Activity
           </h5>
           {history.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {history.slice(0, 10).map((entry) => {
                 const date = parseISO(entry.date);
-                const badge = getLeaveTypeBadge(entry.leaveType);
                 return (
                   <div key={entry.id} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="text-center min-w-[40px]">
-                        <div className="text-xs font-medium text-gray-500 uppercase">
-                          {format(date, 'MMM')}
-                        </div>
-                        <div className="text-lg font-semibold text-gray-900">
+                      <div className="text-center min-w-[32px]">
+                        <div className="text-lg font-semibold text-gray-900 leading-tight">
                           {format(date, 'dd')}
+                        </div>
+                        <div className="text-xs text-gray-400 uppercase">
+                          {format(date, 'MMM')}
                         </div>
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {entry.leaveType === 'AL' ? 'Annual Leave' : entry.leaveType === 'RL' ? 'Replacement Leave' : entry.leaveType === 'ML' ? 'Medical Leave' : 'Emergency Leave'}
+                        <div className="text-sm text-gray-700">
+                          {getLeaveTypeLabel(entry.leaveType)} Leave
                         </div>
-                        <div className="text-xs text-gray-500">1 day</div>
                       </div>
                     </div>
-                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${badge.className}`}>
-                      {badge.label}
+                    <span className="text-xs text-gray-500">
+                      {getLeaveTypeLabel(entry.leaveType)}
                     </span>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No leave history for this period.</p>
+            <p className="text-sm text-gray-400">No leave history for this period.</p>
           )}
         </div>
       )}
