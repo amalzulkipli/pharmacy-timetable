@@ -166,25 +166,18 @@ export default function StaffLeaveCard({
               {history.slice(0, 10).map((entry) => {
                 const date = parseISO(entry.date);
                 return (
-                  <div key={entry.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="text-center min-w-[32px]">
-                        <div className="text-lg font-semibold text-gray-900 leading-tight">
-                          {format(date, 'dd')}
-                        </div>
-                        <div className="text-xs text-gray-400 uppercase">
-                          {format(date, 'MMM')}
-                        </div>
+                  <div key={entry.id} className="flex items-center">
+                    <div className="text-center w-12">
+                      <div className="text-lg font-semibold text-gray-900 leading-tight">
+                        {format(date, 'dd')}
                       </div>
-                      <div>
-                        <div className="text-sm text-gray-700">
-                          {getLeaveTypeLabel(entry.leaveType)} Leave
-                        </div>
+                      <div className="text-xs text-gray-400 uppercase">
+                        {format(date, 'MMM')}
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500">
-                      {getLeaveTypeLabel(entry.leaveType)}
-                    </span>
+                    <div className="flex-1 text-sm text-gray-700 pl-3">
+                      {getLeaveTypeLabel(entry.leaveType)} Leave
+                    </div>
                   </div>
                 );
               })}
