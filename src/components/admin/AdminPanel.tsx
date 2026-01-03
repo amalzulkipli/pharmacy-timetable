@@ -15,20 +15,6 @@ const tabs = [
   { id: 'staff' as Tab, label: 'Staff', icon: Users },
 ];
 
-// Mobile Header Component
-function MobileAdminHeader() {
-  return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
-      <div className="flex items-center gap-2">
-        <div className="bg-blue-600 p-1.5 rounded-lg">
-          <CalendarIcon className="h-5 w-5 text-white" />
-        </div>
-        <span className="font-bold text-lg text-gray-900">Alde ST Timetable</span>
-      </div>
-    </div>
-  );
-}
-
 // Mobile Bottom Navigation Component
 interface MobileAdminNavProps {
   activeTab: Tab;
@@ -94,16 +80,15 @@ export default function AdminPanel() {
       {isMobile ? (
         /* Mobile Layout */
         <>
-          <MobileAdminHeader />
-          <main className="pb-24">
-            {activeTab === 'timetable' && <Calendar mode="admin" hideTitle />}
+          <main>
+            {activeTab === 'timetable' && <Calendar mode="admin" hideTitle hideMobileLogout />}
             {activeTab === 'leave' && (
-              <div className="p-4">
+              <div className="p-4 pb-24">
                 <LeaveOverview />
               </div>
             )}
             {activeTab === 'staff' && (
-              <div className="p-4">
+              <div className="p-4 pb-24">
                 <StaffManagement isMobile />
               </div>
             )}

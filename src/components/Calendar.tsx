@@ -58,9 +58,10 @@ const BAR_COLORS: { [key: string]: string } = {
 interface CalendarProps {
   mode?: 'public' | 'admin';
   hideTitle?: boolean;
+  hideMobileLogout?: boolean;
 }
 
-export default function Calendar({ mode = 'public', hideTitle = false }: CalendarProps) {
+export default function Calendar({ mode = 'public', hideTitle = false, hideMobileLogout = false }: CalendarProps) {
   const authContext = useAuth();
   // In admin mode, always treat as admin; in public mode, use auth context
   const isAdmin = mode === 'admin' || authContext.isAdmin;
@@ -556,6 +557,7 @@ export default function Calendar({ mode = 'public', hideTitle = false }: Calenda
           onGoToToday={handleGoToToday}
           mode={mode}
           onLoginClick={() => setLoginModalOpen(true)}
+          hideMobileLogout={hideMobileLogout}
         />
         {/* Login Modal for mobile */}
         <LoginModal
@@ -1013,6 +1015,7 @@ interface MobileViewProps {
   onGoToToday: () => void;
   mode: 'public' | 'admin';
   onLoginClick: () => void;
+  hideMobileLogout?: boolean;
 }
 
 function MobileView({
@@ -1031,6 +1034,7 @@ function MobileView({
   onGoToToday,
   mode,
   onLoginClick,
+  hideMobileLogout = false,
 }: MobileViewProps) {
   const selectedDay = schedule.days[selectedDayIndex];
 
@@ -1053,9 +1057,9 @@ function MobileView({
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-28 font-sans">
+    <div className={`min-h-screen bg-gray-100 font-sans ${hideMobileLogout ? 'pb-40' : 'pb-28'}`}>
       {/* Header */}
-      <MobileHeader isAdmin={isAdmin} mode={mode} onLoginClick={onLoginClick} />
+      <MobileHeader isAdmin={isAdmin} mode={mode} onLoginClick={onLoginClick} hideMobileLogout={hideMobileLogout} />
 
       {/* Controls: Month/Year + Week Nav */}
       <MobileControls
@@ -1092,25 +1096,29 @@ function MobileView({
         selectedIndex={selectedDayIndex}
         onSelect={handleDateSelect}
         onGoToToday={onGoToToday}
+        hasAdminNav={hideMobileLogout}
       />
     </div>
   );
 }
 
-function MobileHeader({ isAdmin, mode, onLoginClick }: { isAdmin: boolean; mode: 'public' | 'admin'; onLoginClick: () => void }) {
+function MobileHeader({ isAdmin, mode, onLoginClick, hideMobileLogout = false }: { isAdmin: boolean; mode: 'public' | 'admin'; onLoginClick: () => void; hideMobileLogout?: boolean }) {
   const { logout } = useAuth();
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
       <h1 className="text-xl font-bold text-[#37352f]">Alde ST Timetable</h1>
-      {mode === 'admin' || isAdmin ? (
-        <button onClick={logout} className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors">
-          <LogOut size={22} />
-        </button>
-      ) : (
-        <button onClick={onLoginClick} className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors">
-          <User size={22} />
-        </button>
+      {/* Hide logout button when hideMobileLogout is true (admin panel has its own nav with logout) */}
+      {!hideMobileLogout && (
+        mode === 'admin' || isAdmin ? (
+          <button onClick={logout} className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors">
+            <LogOut size={22} />
+          </button>
+        ) : (
+          <button onClick={onLoginClick} className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors">
+            <User size={22} />
+          </button>
+        )
       )}
     </div>
   );
@@ -1314,11 +1322,13 @@ function MobileDaySelector({
   selectedIndex,
   onSelect,
   onGoToToday,
+  hasAdminNav = false,
 }: {
   days: DaySchedule[];
   selectedIndex: number;
   onSelect: (index: number) => void;
   onGoToToday: () => void;
+  hasAdminNav?: boolean;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedButtonRef = useRef<HTMLButtonElement>(null);
@@ -1343,7 +1353,7 @@ function MobileDaySelector({
   }, [selectedIndex]);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+    <div className={`fixed left-0 right-0 bg-white border-t border-gray-200 shadow-lg ${hasAdminNav ? 'bottom-[68px]' : 'bottom-0'}`}>
       <div className="flex items-center">
         {/* Scrollable dates area */}
         <div
