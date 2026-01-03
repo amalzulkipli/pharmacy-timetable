@@ -191,7 +191,8 @@ export async function POST(request: NextRequest) {
               },
             });
 
-            // Update balance
+            // Update balance - use the leave date's year, not the calendar view year
+            const leaveYear = change.date.getFullYear();
             const fieldMap: Record<string, string> = {
               AL: 'alUsed',
               RL: 'rlUsed',
@@ -199,7 +200,7 @@ export async function POST(request: NextRequest) {
             };
             const field = fieldMap[change.leaveType];
             await tx.leaveBalance.updateMany({
-              where: { staffId: change.staffId, year },
+              where: { staffId: change.staffId, year: leaveYear },
               data: { [field]: { increment: 1 } },
             });
           }
