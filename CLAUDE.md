@@ -12,143 +12,104 @@ npm start            # Start production server
 npm run lint         # Run ESLint
 ```
 
+### Database (Prisma + SQLite)
+```bash
+npx prisma migrate dev --name <migration_name>  # Create and apply migration
+npx prisma generate                              # Regenerate Prisma client
+npx prisma studio                                # Open database GUI
+npx prisma db push                               # Push schema changes (dev only)
+```
+
 ### TypeScript
-The project uses TypeScript with strict mode enabled. Path aliases are configured:
-- `@/*` maps to `./src/*`
+The project uses TypeScript with strict mode. Path alias: `@/*` maps to `./src/*`
 
 ## Architecture
 
 ### Tech Stack
-- **Framework:** Next.js 15.5+ (App Router)
+- **Framework:** Next.js 15.5+ (App Router, Turbopack)
+- **Database:** Prisma ORM with SQLite (`prisma/prisma/pharmacy.db`)
 - **UI:** React 19, TypeScript, Tailwind CSS v4
 - **PDF Generation:** Puppeteer (server-side)
 - **Date Utilities:** date-fns
 - **Icons:** lucide-react
 
+### Database Schema (`prisma/schema.prisma`)
+
+**Core Models:**
+- `Staff` - Staff members with entitlements (alEntitlement, mlEntitlement)
+- `ScheduleOverride` - Manual schedule changes per date/staff
+- `ReplacementShift` - Temporary replacement staff
+- `LeaveBalance` - Yearly leave tracking (AL/RL/ML used/remaining per staff)
+- `LeaveHistory` - Individual leave entries with dates and types
+- `PublicHoliday` - Holiday dates for RL calculation
+
+**Leave Types:** `AL` (Annual), `RL` (Replacement), `EL` (Emergency), `ML` (Medical)
+
 ### Core System: Schedule Generation
 
-The application generates pharmacy staff schedules based on **alternating weekly patterns** tied to ISO week numbers:
-- **Odd ISO weeks** use Pattern 0 (PATTERN_0)
-- **Even ISO weeks** use Pattern 1 (PATTERN_1)
-
-Each pattern defines shift assignments for all 4 staff members across 7 days of the week. This two-week rotation ensures balanced workloads and predictable schedules.
+Schedules use **alternating weekly patterns** based on ISO week numbers:
+- **Odd ISO weeks** → Pattern 0
+- **Even ISO weeks** → Pattern 1
 
 **Key Files:**
-- `src/lib/schedule-generator.ts` - Core scheduling algorithm using ISO week-based pattern selection
-- `src/staff-data.ts` - Defines SHIFT_PATTERNS (2 patterns), SHIFT_DEFINITIONS, and STAFF_MEMBERS
-- `src/types/schedule.ts` - TypeScript interfaces for all schedule-related data structures
+- `src/lib/schedule-generator.ts` - Scheduling algorithm with ISO week pattern selection
+- `src/staff-data.ts` - SHIFT_PATTERNS, SHIFT_DEFINITIONS, STAFF_MEMBERS, AVATAR_COLORS
+- `src/types/schedule.ts` - TypeScript interfaces
 
-### Staff Configuration (`src/staff-data.ts`)
+### API Routes
 
-**4 Staff Members:**
-1. **Fatimah** (Pharmacist, 45h/week) - Off Sat/Sun
-2. **Siti** (Assistant, 45h/week) - Off Mon/Tue
-3. **Pah** (Assistant, 45h/week) - Off Mon/Tue
-4. **Amal** (Pharmacist, 32h/week) - Off Wed/Thu/Fri
+| Endpoint | Purpose |
+|----------|---------|
+| `GET/POST /api/overrides` | Fetch/save schedule overrides for a month |
+| `GET/POST /api/staff` | List/create staff members |
+| `PUT/DELETE /api/staff/[staffId]` | Update/deactivate staff |
+| `GET /api/leave/balances` | Leave balances by year |
+| `GET /api/leave/history` | Leave history entries |
+| `POST /api/leave/calculate-rl` | Recalculate replacement leave |
+| `POST /api/migrate` | Seed database with initial data |
+| `POST /api/generate-pdf` | Server-side PDF generation |
 
-**Shift Types:**
-- 11h shift: 09:15-21:45
-- 9h shifts: Early (09:15-19:15), Late (11:45-21:45)
-- 8h shifts: Early (09:15-18:15), Late (12:45-21:45)
-- 7h shifts: Early (09:15-17:15), Late (13:45-21:45)
+### Key Hooks (`src/hooks/`)
 
-**Pattern Logic:**
-Each staff member has different shift assignments in Pattern 0 vs Pattern 1 to create variety. For example:
-- Fatimah works 11h Monday-Tuesday in both patterns, but Friday differs (7h early in P0, 7h late in P1)
-- Siti and Pah alternate between early/late shift timing patterns each week
+- `useScheduleDB.ts` - Database operations for overrides with offline fallback to localStorage
+- `useAuth.ts` - Admin authentication
+- `useLocalStorage.ts` - Local storage utilities
 
-### Schedule Overrides & Persistence
+### Admin Panel (`src/components/admin/`)
 
-The Calendar component (`src/components/Calendar.tsx`) supports manual schedule overrides that are persisted in `localStorage`:
-- Users can override shifts, mark staff as on leave (AL/RL/EL), or add temporary replacement staff
-- Overrides are stored with a unique key per month/year
-- The system maintains a distinction between pattern-based shifts and manually overridden shifts via the `isOverride` flag
+- `AdminPanel.tsx` - Tab container for admin features
+- `LeaveOverview.tsx` - Staff leave dashboard with balance cards
+- `StaffLeaveCard.tsx` - Individual staff leave display with history accordion
+- `StaffManagement.tsx` - CRUD for staff members and entitlements
 
-### Public Holidays
+### Calendar Component (`src/components/Calendar.tsx`)
 
-Hardcoded in `src/lib/schedule-generator.ts` as `PUBLIC_HOLIDAYS` (includes 2025-2026). On public holidays:
-- All staff are automatically marked as off (shift = null)
-- The schedule generator blocks all shifts for these dates
-
-### Components
-
-**`src/components/Calendar.tsx`** (Main UI Component)
-- Renders monthly calendar in 7-column CSS Grid (Mon-Sun)
-- Supports admin mode (`isAdmin` prop) for editing schedules
-- Handles CSV/PDF export functionality
-- Manages schedule overrides in localStorage
-- Displays weekly hour summaries and monthly totals
-- Includes responsive mobile view with `MobileStaffCard` subcomponent
-- Complex component with ~800+ lines handling UI, state, and export logic
-
-**`src/components/AuthWrapper.tsx`**
-- Authentication wrapper for admin access control
-
-**`src/components/DataManager.tsx`**
-- Data management interface (likely for editing staff/shifts)
-
-### PDF Generation (`src/app/api/generate-pdf/route.ts`)
-
-**Critical Technical Context:**
-- Tailwind CSS v4 uses modern `oklch()` color functions that are incompatible with html2canvas
-- Solution: Server-side PDF generation using Puppeteer with CSS overrides
-- The API endpoint receives HTML + styles from the frontend, then generates PDF server-side
-
-**PDF Layout:**
-- A4 landscape format
-- 2 weeks per page for optimal readability
-- CSS Grid requires specific rendering fixes for Puppeteer (see PDF-specific CSS in the route handler)
-
-**Endpoint:** `POST /api/generate-pdf`
-```typescript
-{
-  html: string,      // Complete calendar HTML
-  styles: string,    // Extracted CSS styles
-  title: string,     // PDF title
-  filename: string   // Output filename
-}
-```
-
-### Weekly Hours Calculation
-
-The system tracks weekly hours for each staff member to ensure compliance with contracted hours:
-- Calculated in `calculateWeeklyHours()` function in `schedule-generator.ts`
-- Used to display summaries in the Calendar UI
-- Helps identify weeks where staff may be under-scheduled
-
-### Type System (`src/types/schedule.ts`)
-
-**Key Interfaces:**
-- `StaffMember` - Staff configuration with role, weeklyHours, defaultOffDays
-- `ShiftDefinition` - Defines shift type, timing, start/end times, work hours
-- `ShiftPattern` - Weekly pattern with dailyShifts mapping (staffId -> dayOfWeek -> ShiftDefinition)
-- `DaySchedule` - Single day with staffShifts, holiday info, overrides, leave tracking
-- `MonthSchedule` - Complete month with days array and weeklyHours calculations
-- `ReplacementShift` - Temporary replacement staff assignments
+Main UI (~800+ lines):
+- 7-column CSS Grid (Mon-Sun)
+- Admin mode for editing shifts/leave
+- CSV/PDF export
+- Mobile responsive with `MobileStaffCard`
+- Overrides persisted via `useScheduleOverridesDB` hook
 
 ### Important Implementation Details
 
-1. **ISO Week-Based Patterns:** The entire schedule logic relies on `getISOWeek()` from date-fns. Pattern selection via `getPatternForWeek(isoWeek)` determines which SHIFT_PATTERN applies.
+1. **Leave Balance Year Handling:** When saving leave, balance updates use `leaveDate.getFullYear()` not the calendar view year. Critical for cross-year boundaries.
 
-2. **Date Handling:** Uses date-fns extensively for date manipulation. Week starts on Monday (`weekStartsOn: 1`).
+2. **Database Location:** Actual database is at `prisma/prisma/pharmacy.db` (note the nested path).
 
-3. **Color Coding:** Staff members have distinct colors defined in `STAFF_COLORS` (blue, green, purple, pink) for visual identification. Mobile views use `AVATAR_COLORS` for solid-colored circular avatars.
+3. **Offline Support:** `useScheduleOverridesDB` caches to localStorage and queues changes when offline.
 
-4. **localStorage Keys:** Schedule overrides are stored with keys like `schedule-override-{month}-{year}`.
+4. **Staff Colors:** `AVATAR_COLORS` in `staff-data.ts` keyed by staffId for consistent coloring.
 
-5. **Grid Layout:** CSS Grid is central to the UI. Uses `grid-cols-7` with specific styling for calendar cells.
+5. **Public Holidays:** Stored in database, used for RL calculation. On holidays, all staff marked as off.
 
-## Known Technical Issues
+## PDF Generation
 
-1. **Tailwind v4 + PDF Generation:** Solved by using Puppeteer instead of client-side html2canvas
-2. **CSS Grid in PDF:** Requires specific width/layout fixes in the PDF generation route
-3. **Performance:** PDF generation takes 3-5 seconds per document due to Puppeteer rendering
+Tailwind CSS v4's `oklch()` colors are incompatible with html2canvas. Solution: Puppeteer server-side rendering.
 
-## Future Considerations
+**Endpoint:** `POST /api/generate-pdf`
+```typescript
+{ html: string, styles: string, title: string, filename: string }
+```
 
-The README mentions planned features including:
-- Staff management UI (add/edit/remove staff)
-- Customizable shift templates
-- Conflict detection and visual warnings
-- Database integration (currently all data is in-memory/localStorage)
-- Real-time collaboration features
+**Layout:** A4 landscape, 2 weeks per page, CSS Grid fixes for Puppeteer.
