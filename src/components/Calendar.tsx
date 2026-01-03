@@ -72,6 +72,10 @@ export default function Calendar({ mode = 'public', hideTitle = false }: Calenda
   // Type for override structure
   type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' } | ReplacementShift[]>;
 
+  // Calculate previous month for fetching adjacent month overrides
+  const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+  const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+
   // Use database-backed hook for overrides (with localStorage fallback)
   const {
     overrides: dbOverrides,
@@ -81,6 +85,14 @@ export default function Calendar({ mode = 'public', hideTitle = false }: Calenda
   } = useScheduleOverridesDB({
     year: selectedYear,
     month: selectedMonth,
+  });
+
+  // Also fetch previous month's overrides for days shown from adjacent month
+  const {
+    overrides: prevMonthOverrides,
+  } = useScheduleOverridesDB({
+    year: prevYear,
+    month: prevMonth,
   });
 
   // Local state for manual overrides (synced from DB)
@@ -179,12 +191,22 @@ export default function Calendar({ mode = 'public', hideTitle = false }: Calenda
   };
 
   // --- Core Logic ---
-  // Sync local state with DB overrides
+  // Sync local state with DB overrides (merge current + previous month for adjacent days)
   useEffect(() => {
-    if (dbOverrides) {
-      setManualOverrides(dbOverrides as Record<string, OverrideData>);
+    const mergedOverrides: Record<string, OverrideData> = {};
+
+    // Add previous month overrides first (for days shown from adjacent month)
+    if (prevMonthOverrides) {
+      Object.assign(mergedOverrides, prevMonthOverrides);
     }
-  }, [dbOverrides]);
+
+    // Add current month overrides (these take precedence if any overlap)
+    if (dbOverrides) {
+      Object.assign(mergedOverrides, dbOverrides);
+    }
+
+    setManualOverrides(mergedOverrides as Record<string, OverrideData>);
+  }, [dbOverrides, prevMonthOverrides]);
 
   useEffect(() => {
     // Apply overrides to the base schedule
