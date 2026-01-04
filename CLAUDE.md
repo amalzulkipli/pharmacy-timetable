@@ -46,7 +46,9 @@ NEXT_PUBLIC_ADMIN_PASSWORD=<password>       # Admin login password
 
 **Core Models:**
 - `Staff` - Staff members with entitlements (alEntitlement, mlEntitlement)
-- `ScheduleOverride` - Manual schedule changes per date/staff
+- `ScheduleOverride` - Published schedule changes per date/staff
+- `ScheduleDraft` - Unpublished schedule changes (same structure as ScheduleOverride)
+- `DraftMonth` - Tracks which months have unpublished drafts (year, month)
 - `ReplacementShift` - Temporary replacement staff
 - `LeaveBalance` - Yearly leave tracking (AL/RL/ML used/remaining per staff)
 - `LeaveHistory` - Individual leave entries with dates and types
@@ -89,7 +91,9 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET/POST /api/overrides` | Fetch/save schedule overrides for a month |
+| `GET/POST /api/overrides` | Fetch/save schedule overrides (GET returns draft if exists, POST saves to draft) |
+| `POST /api/overrides/publish` | Publish drafts to ScheduleOverride, update leave balances |
+| `POST /api/overrides/discard` | Discard drafts for a month |
 | `GET/POST /api/staff` | List/create staff members |
 | `PUT/DELETE /api/staff/[staffId]` | Update/deactivate staff |
 | `GET /api/leave/balances` | Leave balances by year |
@@ -137,6 +141,15 @@ Main UI (~1400 lines), accepts `mode` prop:
 6. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
 
 7. **Authentication:** Cookie-based auth via `useAuth` hook. Login sets `pharmacy-admin-auth` cookie (24h expiry) for middleware protection. Password stored in `NEXT_PUBLIC_ADMIN_PASSWORD` env var.
+
+### Draft/Publish Workflow
+
+Schedule changes follow a draft-first pattern:
+- **Editing:** All changes save to `ScheduleDraft` table (not immediately published)
+- **Tracking:** `DraftMonth` records which months have unpublished changes
+- **Publishing:** Admin publishes drafts → copies to `ScheduleOverride`, updates leave balances
+- **Discarding:** Admin can discard drafts → deletes from `ScheduleDraft`, clears `DraftMonth`
+- **View modes:** Public users see only published (`ScheduleOverride`), admins see drafts if they exist
 
 ### Offline Sync Strategy
 

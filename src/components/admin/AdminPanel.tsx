@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, CalendarDays, Users, LogOut } from 'lucide-react';
+import { Calendar as CalendarIcon, CalendarDays, Users, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Calendar from '@/components/Calendar';
 import LeaveOverview from './LeaveOverview';
 import StaffManagement from './StaffManagement';
-
-type Tab = 'timetable' | 'leave' | 'staff';
+import MobileDrawerMenu, { type Tab } from '@/components/mobile/MobileDrawerMenu';
 
 const tabs = [
   { id: 'timetable' as Tab, label: 'Timetable', icon: CalendarIcon },
@@ -15,51 +14,10 @@ const tabs = [
   { id: 'staff' as Tab, label: 'Staff', icon: Users },
 ];
 
-// Mobile Bottom Navigation Component
-interface MobileAdminNavProps {
-  activeTab: Tab;
-  onTabChange: (tab: Tab) => void;
-  onLogout: () => void;
-}
-
-function MobileAdminNav({ activeTab, onTabChange, onLogout }: MobileAdminNavProps) {
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
-      <div className="flex items-center justify-around py-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center min-w-[64px] min-h-[48px] px-3 py-2 rounded-lg transition-colors ${
-                isActive
-                  ? 'text-blue-600'
-                  : 'text-gray-500'
-              }`}
-            >
-              <Icon className="h-6 w-6" />
-              <span className="text-xs font-medium mt-1">{tab.label}</span>
-            </button>
-          );
-        })}
-        {/* Logout button in bottom nav */}
-        <button
-          onClick={onLogout}
-          className="flex flex-col items-center justify-center min-w-[64px] min-h-[48px] px-3 py-2 rounded-lg text-red-500 transition-colors"
-        >
-          <LogOut className="h-6 w-6" />
-          <span className="text-xs font-medium mt-1">Logout</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<Tab>('timetable');
   const [isMobile, setIsMobile] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const { logout } = useAuth();
 
   // Mobile detection
@@ -75,29 +33,70 @@ export default function AdminPanel() {
     window.location.href = '/';
   };
 
+  const handleMobileTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    setIsDrawerOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {isMobile ? (
         /* Mobile Layout */
         <>
           <main>
-            {activeTab === 'timetable' && <Calendar mode="admin" hideTitle hideMobileLogout />}
+            {activeTab === 'timetable' && (
+              <Calendar
+                mode="admin"
+                hideTitle
+                hideMobileLogout
+                onMobileTabChange={handleMobileTabChange}
+              />
+            )}
             {activeTab === 'leave' && (
-              <div className="p-4 pb-24">
-                <LeaveOverview />
+              <div className="min-h-screen bg-gray-100">
+                {/* Header for Leave tab */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-200">
+                  <button
+                    onClick={() => setIsDrawerOpen(true)}
+                    className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <Menu size={22} />
+                  </button>
+                  <h1 className="text-lg font-bold text-gray-900">Leave Overview</h1>
+                </div>
+                <div className="p-4 pb-8">
+                  <LeaveOverview />
+                </div>
               </div>
             )}
             {activeTab === 'staff' && (
-              <div className="p-4 pb-24">
-                <StaffManagement isMobile />
+              <div className="min-h-screen bg-gray-100">
+                {/* Header for Staff tab */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-white border-b border-gray-200">
+                  <button
+                    onClick={() => setIsDrawerOpen(true)}
+                    className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <Menu size={22} />
+                  </button>
+                  <h1 className="text-lg font-bold text-gray-900">Staff Management</h1>
+                </div>
+                <div className="p-4 pb-8">
+                  <StaffManagement isMobile />
+                </div>
               </div>
             )}
           </main>
-          <MobileAdminNav
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onLogout={handleLogout}
-          />
+          {/* Drawer for Leave and Staff tabs */}
+          {activeTab !== 'timetable' && (
+            <MobileDrawerMenu
+              isOpen={isDrawerOpen}
+              onClose={() => setIsDrawerOpen(false)}
+              activeTab={activeTab}
+              onTabChange={handleMobileTabChange}
+              onLogout={handleLogout}
+            />
+          )}
         </>
       ) : (
         /* Desktop Layout */

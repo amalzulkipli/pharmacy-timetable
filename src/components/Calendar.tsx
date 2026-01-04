@@ -5,11 +5,14 @@ import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, ex
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS, AVATAR_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, LogOut, Clock, Calendar as CalendarIcon, Printer, Check, Trash2 } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, Clock, Calendar as CalendarIcon, Printer, Check, Trash2, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import LoginModal from './LoginModal';
 import StaffHoursOverview from './admin/StaffHoursOverview';
+import MobileDrawerMenu, { type Tab } from './mobile/MobileDrawerMenu';
+import ShiftPickerBottomSheet from './mobile/ShiftPickerBottomSheet';
+import FloatingActionButton from './mobile/FloatingActionButton';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -59,9 +62,10 @@ interface CalendarProps {
   mode?: 'public' | 'admin';
   hideTitle?: boolean;
   hideMobileLogout?: boolean;
+  onMobileTabChange?: (tab: Tab) => void;
 }
 
-export default function Calendar({ mode = 'public', hideTitle = false, hideMobileLogout = false }: CalendarProps) {
+export default function Calendar({ mode = 'public', hideTitle = false, hideMobileLogout = false, onMobileTabChange }: CalendarProps) {
   const authContext = useAuth();
   // In admin mode, always treat as admin; in public mode, use auth context
   const isAdmin = mode === 'admin' || authContext.isAdmin;
@@ -589,6 +593,16 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           mode={mode}
           onLoginClick={() => setLoginModalOpen(true)}
           hideMobileLogout={hideMobileLogout}
+          isEditMode={isEditMode}
+          editBuffer={editBuffer}
+          hasDraft={hasDraft}
+          onEnterEditMode={handleEnterEditMode}
+          onCancelEdit={() => setIsEditMode(false)}
+          onSaveChanges={handleSaveChanges}
+          onPublish={handlePublish}
+          onDiscardDraft={handleDiscardDraft}
+          onEditBufferChange={handleEditBufferChange}
+          onMobileTabChange={onMobileTabChange}
         />
         {/* Login Modal for mobile */}
         <LoginModal
@@ -1074,6 +1088,17 @@ interface MobileViewProps {
   mode: 'public' | 'admin';
   onLoginClick: () => void;
   hideMobileLogout?: boolean;
+  // Edit mode props
+  isEditMode: boolean;
+  editBuffer: Record<string, Record<string, string>>;
+  hasDraft: boolean;
+  onEnterEditMode: () => void;
+  onCancelEdit: () => void;
+  onSaveChanges: () => void;
+  onPublish: () => void;
+  onDiscardDraft: () => void;
+  onEditBufferChange: (dayKey: string, staffId: string, value: string) => void;
+  onMobileTabChange?: (tab: Tab) => void;
 }
 
 function MobileView({
@@ -1092,11 +1117,30 @@ function MobileView({
   onGoToToday,
   mode,
   onLoginClick,
-  hideMobileLogout = false,
+  isEditMode,
+  editBuffer,
+  hasDraft,
+  onEnterEditMode,
+  onCancelEdit,
+  onSaveChanges,
+  onPublish,
+  onDiscardDraft,
+  onEditBufferChange,
+  onMobileTabChange,
 }: MobileViewProps) {
+  const { logout } = useAuth();
   const selectedDay = schedule.days[selectedDayIndex];
 
+  // Drawer and bottom sheet state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedStaffForEdit, setSelectedStaffForEdit] = useState<{
+    staff: StaffMember;
+    dayKey: string;
+  } | null>(null);
+
   if (!selectedDay) return null;
+
+  const dayKey = format(selectedDay.date, 'yyyy-MM-dd');
 
   // Handle date selection - auto-change month if selecting adjacent month date
   const handleDateSelect = (index: number) => {
@@ -1114,10 +1158,66 @@ function MobileView({
     }
   };
 
+  // Handle staff card tap in edit mode
+  const handleStaffCardTap = (staff: StaffMember) => {
+    if (isEditMode) {
+      setSelectedStaffForEdit({ staff, dayKey });
+    }
+  };
+
+  // Handle shift selection from bottom sheet
+  const handleShiftSelect = (shiftKey: string) => {
+    if (selectedStaffForEdit) {
+      // Map the shift key to the correct format for editBuffer
+      let bufferValue = shiftKey;
+      if (['AL', 'RL', 'EL', 'ML'].includes(shiftKey)) {
+        bufferValue = `leave_${shiftKey.toLowerCase()}`;
+      }
+      onEditBufferChange(selectedStaffForEdit.dayKey, selectedStaffForEdit.staff.id, bufferValue);
+      setSelectedStaffForEdit(null);
+    }
+  };
+
+  // Handle tab change from drawer
+  const handleTabChange = (tab: Tab) => {
+    if (onMobileTabChange) {
+      onMobileTabChange(tab);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/';
+  };
+
+  // Get current value for the shift picker
+  const getCurrentShiftValue = (): string => {
+    if (!selectedStaffForEdit) return 'off';
+    const bufferValue = editBuffer[selectedStaffForEdit.dayKey]?.[selectedStaffForEdit.staff.id] || 'off';
+    // Convert leave_xx format back to XX for display
+    if (bufferValue.startsWith('leave_')) {
+      return bufferValue.split('_')[1].toUpperCase();
+    }
+    return bufferValue;
+  };
+
+  // Check if admin mode
+  const isAdminMode = mode === 'admin' || isAdmin;
+
   return (
-    <div className={`min-h-screen bg-gray-100 font-sans ${hideMobileLogout ? 'pb-40' : 'pb-28'}`}>
-      {/* Header */}
-      <MobileHeader isAdmin={isAdmin} mode={mode} onLoginClick={onLoginClick} hideMobileLogout={hideMobileLogout} />
+    <div className="min-h-screen bg-gray-100 font-sans pb-28">
+      {/* Header with hamburger and action buttons */}
+      <MobileHeader
+        isAdmin={isAdmin}
+        mode={mode}
+        onLoginClick={onLoginClick}
+        isEditMode={isEditMode}
+        hasDraft={hasDraft}
+        onMenuOpen={() => setIsDrawerOpen(true)}
+        onCancelEdit={onCancelEdit}
+        onSaveChanges={onSaveChanges}
+      />
 
       {/* Controls: Month/Year + Week Nav */}
       <MobileControls
@@ -1140,6 +1240,9 @@ function MobileView({
             key={staff.id}
             staff={staff}
             staffShift={selectedDay.staffShifts[staff.id]}
+            isEditMode={isEditMode}
+            editValue={editBuffer[dayKey]?.[staff.id]}
+            onTap={() => handleStaffCardTap(staff)}
           />
         ))}
         {/* Replacement shifts */}
@@ -1148,36 +1251,124 @@ function MobileView({
         ))}
       </div>
 
-      {/* Bottom Day Selector with integrated TODAY button */}
+      {/* Floating Action Button - only for admin, hidden when editing */}
+      {isAdminMode && !isEditMode && (
+        <FloatingActionButton
+          hasDraft={hasDraft}
+          onEdit={onEnterEditMode}
+          onDiscard={onDiscardDraft}
+          onPublish={onPublish}
+        />
+      )}
+
+      {/* Bottom Day Selector */}
       <MobileDaySelector
         days={schedule.days}
         selectedIndex={selectedDayIndex}
         onSelect={handleDateSelect}
         onGoToToday={onGoToToday}
-        hasAdminNav={hideMobileLogout}
       />
+
+      {/* Drawer Menu */}
+      <MobileDrawerMenu
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        activeTab="timetable"
+        onTabChange={handleTabChange}
+        onLogout={handleLogout}
+      />
+
+      {/* Shift Picker Bottom Sheet */}
+      {selectedStaffForEdit && (
+        <ShiftPickerBottomSheet
+          isOpen={!!selectedStaffForEdit}
+          onClose={() => setSelectedStaffForEdit(null)}
+          staff={selectedStaffForEdit.staff}
+          currentValue={getCurrentShiftValue()}
+          onSelect={handleShiftSelect}
+        />
+      )}
     </div>
   );
 }
 
-function MobileHeader({ isAdmin, mode, onLoginClick, hideMobileLogout = false }: { isAdmin: boolean; mode: 'public' | 'admin'; onLoginClick: () => void; hideMobileLogout?: boolean }) {
-  const { logout } = useAuth();
+interface MobileHeaderProps {
+  isAdmin: boolean;
+  mode: 'public' | 'admin';
+  onLoginClick: () => void;
+  isEditMode: boolean;
+  hasDraft: boolean;
+  onMenuOpen: () => void;
+  onCancelEdit: () => void;
+  onSaveChanges: () => void;
+}
+
+function MobileHeader({
+  isAdmin,
+  mode,
+  onLoginClick,
+  isEditMode,
+  hasDraft,
+  onMenuOpen,
+  onCancelEdit,
+  onSaveChanges,
+}: MobileHeaderProps) {
+  const isAdminMode = mode === 'admin' || isAdmin;
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
-      <h1 className="text-xl font-bold text-[#37352f]">Alde ST Timetable</h1>
-      {/* Hide logout button when hideMobileLogout is true (admin panel has its own nav with logout) */}
-      {!hideMobileLogout && (
-        mode === 'admin' || isAdmin ? (
-          <button onClick={logout} className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors">
-            <LogOut size={22} />
-          </button>
+      {/* Left: Title + Draft badge */}
+      <div className="flex items-center gap-2">
+        <h1 className="text-lg font-bold text-[#37352f]">
+          {isEditMode ? 'Editing...' : 'Alde ST Timetable'}
+        </h1>
+        {/* Draft badge */}
+        {hasDraft && !isEditMode && (
+          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">
+            Draft
+          </span>
+        )}
+      </div>
+
+      {/* Right: Action buttons */}
+      <div className="flex items-center gap-1">
+        {isAdminMode ? (
+          isEditMode ? (
+            // Edit mode: Cancel + Save (no hamburger)
+            <>
+              <button
+                onClick={onCancelEdit}
+                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <button
+                onClick={onSaveChanges}
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
+              >
+                <Save size={16} />
+                <span>Save</span>
+              </button>
+            </>
+          ) : (
+            // View mode: Hamburger on the right
+            <button
+              onClick={onMenuOpen}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Menu size={22} />
+            </button>
+          )
         ) : (
-          <button onClick={onLoginClick} className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors">
+          // Public mode: Login button only
+          <button
+            onClick={onLoginClick}
+            className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors"
+          >
             <User size={22} />
           </button>
-        )
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -1255,19 +1446,49 @@ function MobileDayHeader({ day, weekNumber }: { day: DaySchedule; weekNumber: nu
   );
 }
 
-function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift: DaySchedule['staffShifts'][string] }) {
+interface MobileStaffCardProps {
+  staff: StaffMember;
+  staffShift: DaySchedule['staffShifts'][string];
+  isEditMode?: boolean;
+  editValue?: string;
+  onTap?: () => void;
+}
+
+function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onTap }: MobileStaffCardProps) {
   const avatarColors = AVATAR_COLORS[staff.id];
   const initials = staff.name.substring(0, 2).toUpperCase();
-  const isOff = !staffShift.shift && !staffShift.isLeave;
-  const isLeave = staffShift.isLeave;
+
+  // Determine display state based on editValue if in edit mode
+  let displayShift = staffShift.shift;
+  let displayIsLeave = staffShift.isLeave;
+  let displayLeaveType = staffShift.leaveType;
+
+  if (isEditMode && editValue) {
+    if (editValue === 'off') {
+      displayShift = null;
+      displayIsLeave = false;
+      displayLeaveType = undefined;
+    } else if (editValue.startsWith('leave_')) {
+      displayShift = null;
+      displayIsLeave = true;
+      displayLeaveType = editValue.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML';
+    } else if (SHIFT_DEFINITIONS[editValue]) {
+      displayShift = SHIFT_DEFINITIONS[editValue];
+      displayIsLeave = false;
+      displayLeaveType = undefined;
+    }
+  }
+
+  const isOff = !displayShift && !displayIsLeave;
+  const isLeave = displayIsLeave;
   const isNotWorking = isOff || isLeave;
 
   // Determine shift label
   const shiftLabel = isOff
     ? 'Day Off'
     : isLeave
-    ? `${staffShift.leaveType} Leave`
-    : getShiftLabel(staffShift.shift);
+    ? `${displayLeaveType} Leave`
+    : getShiftLabel(displayShift);
 
   // Badge styling
   const badgeClasses = isNotWorking
@@ -1275,13 +1496,25 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
     : avatarColors.badge;
 
   // Card and avatar styling - grey out when not working
-  const cardClasses = isNotWorking
+  let cardClasses = isNotWorking
     ? 'bg-gray-50 rounded-xl p-4 shadow-sm'
     : 'bg-white rounded-xl p-4 shadow-sm';
+
+  // Add edit mode styling
+  if (isEditMode) {
+    cardClasses += ' cursor-pointer ring-2 ring-blue-200 hover:ring-blue-400 transition-all';
+  }
+
   const avatarBg = isNotWorking ? 'bg-gray-300' : avatarColors.bg;
 
+  const handleClick = () => {
+    if (isEditMode && onTap) {
+      onTap();
+    }
+  };
+
   return (
-    <div className={cardClasses}>
+    <div className={cardClasses} onClick={handleClick}>
       {/* Top section: Avatar + Info + Badge */}
       <div className="flex items-center gap-3">
         {/* Smaller Avatar with border/shadow */}
@@ -1295,27 +1528,32 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
           <p className="text-sm text-gray-500">{shiftLabel}</p>
         </div>
 
-        {/* Hours Badge - less rounded */}
-        <span className={`px-2.5 py-1 rounded-md text-xs font-semibold flex-shrink-0 ${badgeClasses}`}>
-          {isOff || isLeave ? (isLeave ? staffShift.leaveType : 'OFF') : `${staffShift.shift?.workHours}h`}
-        </span>
+        {/* Hours Badge + Edit indicator */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${badgeClasses}`}>
+            {isOff || isLeave ? (isLeave ? displayLeaveType : 'OFF') : `${displayShift?.workHours}h`}
+          </span>
+          {isEditMode && (
+            <ChevronDown size={18} className="text-blue-500" />
+          )}
+        </div>
       </div>
 
       {/* Progress Bar - full width, outside flex */}
-      {staffShift.shift && (
+      {displayShift && (
         <>
           <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${BAR_COLORS[staff.id]}`}
               style={{
-                marginLeft: `${calculateBarStart(staffShift.shift.startTime)}%`,
-                width: `${calculateBarWidth(staffShift.shift.startTime, staffShift.shift.endTime)}%`
+                marginLeft: `${calculateBarStart(displayShift.startTime)}%`,
+                width: `${calculateBarWidth(displayShift.startTime, displayShift.endTime)}%`
               }}
             />
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
             <Clock size={14} />
-            <span>{staffShift.shift.startTime} - {staffShift.shift.endTime}</span>
+            <span>{displayShift.startTime} - {displayShift.endTime}</span>
           </div>
         </>
       )}
@@ -1324,7 +1562,7 @@ function MobileStaffCard({ staff, staffShift }: { staff: StaffMember; staffShift
       {(isOff || isLeave) && (
         <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-400">
           <CalendarIcon size={14} />
-          <span className="italic">{isLeave ? `On ${staffShift.leaveType} leave` : 'Not scheduled'}</span>
+          <span className="italic">{isLeave ? `On ${displayLeaveType} leave` : 'Not scheduled'}</span>
         </div>
       )}
     </div>
@@ -1380,13 +1618,11 @@ function MobileDaySelector({
   selectedIndex,
   onSelect,
   onGoToToday,
-  hasAdminNav = false,
 }: {
   days: DaySchedule[];
   selectedIndex: number;
   onSelect: (index: number) => void;
   onGoToToday: () => void;
-  hasAdminNav?: boolean;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedButtonRef = useRef<HTMLButtonElement>(null);
@@ -1411,7 +1647,7 @@ function MobileDaySelector({
   }, [selectedIndex]);
 
   return (
-    <div className={`fixed left-0 right-0 bg-white border-t border-gray-200 shadow-lg ${hasAdminNav ? 'bottom-[68px]' : 'bottom-0'}`}>
+    <div className="fixed left-0 right-0 bg-white border-t border-gray-200 shadow-lg bottom-0 z-30">
       <div className="flex items-center">
         {/* Scrollable dates area */}
         <div
