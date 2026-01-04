@@ -14,6 +14,7 @@ type MonthOverrides = Record<string, OverrideData | ReplacementShift[]>;
 interface UseScheduleDBOptions {
   year: number;
   month: number;
+  view?: 'public' | 'admin';
   fallbackToLocal?: boolean;
 }
 
@@ -22,19 +23,24 @@ interface UseScheduleDBReturn {
   isLoading: boolean;
   error: string | null;
   isOnline: boolean;
+  hasDraft: boolean;
   saveOverrides: (newOverrides: Record<string, MonthOverrides>) => Promise<{ success: boolean; error?: string }>;
+  publishDraft: () => Promise<{ success: boolean; error?: string }>;
+  discardDraft: () => Promise<{ success: boolean; error?: string }>;
   refetch: () => Promise<void>;
 }
 
 export function useScheduleOverridesDB({
   year,
   month,
+  view = 'public',
   fallbackToLocal = true,
 }: UseScheduleDBOptions): UseScheduleDBReturn {
   const [overrides, setOverrides] = useState<Record<string, MonthOverrides>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [hasDraft, setHasDraft] = useState(false);
   const isMounted = useRef(true);
 
   // Get localStorage cache key
@@ -54,17 +60,23 @@ export function useScheduleOverridesDB({
     setError(null);
 
     try {
-      const response = await fetch(`/api/overrides?year=${year}&month=${month}`);
+      const response = await fetch(`/api/overrides?year=${year}&month=${month}&view=${view}`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const result = await response.json();
+      // New response format: { data: {...}, meta: { hasDraft, year, month } }
+      const data = result.data || result;
+      const meta = result.meta;
 
       if (isMounted.current) {
         setOverrides(data);
         setIsOnline(true);
+        if (meta) {
+          setHasDraft(meta.hasDraft || false);
+        }
 
         // Cache to localStorage for offline fallback
         if (fallbackToLocal && typeof window !== 'undefined') {
@@ -105,9 +117,9 @@ export function useScheduleOverridesDB({
         setIsLoading(false);
       }
     }
-  }, [year, month, fallbackToLocal, getCacheKey, getPendingKey]);
+  }, [year, month, view, fallbackToLocal, getCacheKey, getPendingKey]);
 
-  // Save to database
+  // Save to database as draft
   const saveOverrides = useCallback(
     async (newOverrides: Record<string, MonthOverrides>): Promise<{ success: boolean; error?: string }> => {
       try {
@@ -125,6 +137,7 @@ export function useScheduleOverridesDB({
 
         setOverrides(newOverrides);
         setIsOnline(true);
+        setHasDraft(true); // Mark that we now have a draft
 
         // Update cache
         if (typeof window !== 'undefined') {
@@ -154,6 +167,62 @@ export function useScheduleOverridesDB({
     },
     [year, month, getCacheKey, getPendingKey]
   );
+
+  // Publish draft to live
+  const publishDraft = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/overrides/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, month }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.details || errorData.error || response.statusText;
+        throw new Error(`Failed to publish: ${errorMessage}`);
+      }
+
+      setHasDraft(false);
+      setIsOnline(true);
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error publishing draft:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      };
+    }
+  }, [year, month]);
+
+  // Discard draft and revert to published state
+  const discardDraft = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/overrides/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, month }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.details || errorData.error || response.statusText;
+        throw new Error(`Failed to discard: ${errorMessage}`);
+      }
+
+      setHasDraft(false);
+      setIsOnline(true);
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error discarding draft:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      };
+    }
+  }, [year, month]);
 
   // Sync pending changes when coming back online
   const syncPendingChanges = useCallback(async () => {
@@ -210,7 +279,10 @@ export function useScheduleOverridesDB({
     isLoading,
     error,
     isOnline,
+    hasDraft,
     saveOverrides,
+    publishDraft,
+    discardDraft,
     refetch: fetchOverrides,
   };
 }

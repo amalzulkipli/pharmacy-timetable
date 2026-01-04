@@ -5,7 +5,7 @@ import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, ex
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS, AVATAR_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, LogOut, Clock, Calendar as CalendarIcon, Printer } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, LogOut, Clock, Calendar as CalendarIcon, Printer, Check, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import LoginModal from './LoginModal';
@@ -82,11 +82,16 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   const {
     overrides: dbOverrides,
     saveOverrides,
+    publishDraft,
+    discardDraft,
+    hasDraft,
     isLoading: isLoadingOverrides,
-    isOnline
+    isOnline,
+    refetch
   } = useScheduleOverridesDB({
     year: selectedYear,
     month: selectedMonth,
+    view: mode === 'admin' ? 'admin' : 'public',
   });
 
   // Also fetch previous month's overrides for days shown from adjacent month
@@ -313,6 +318,32 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       console.warn('Saved locally, will sync when online:', result.error);
     }
     setIsEditMode(false);
+  };
+
+  // Publish draft to live
+  const handlePublish = async () => {
+    if (!confirm('Publish changes?\n\nThis will make all draft changes visible to all staff.')) {
+      return;
+    }
+    const result = await publishDraft();
+    if (result.success) {
+      await refetch(); // Refresh to show published state
+    } else {
+      alert('Failed to publish: ' + (result.error || 'Unknown error'));
+    }
+  };
+
+  // Discard draft and revert to published state
+  const handleDiscardDraft = async () => {
+    if (!confirm('Discard all unpublished changes?\n\nThis cannot be undone.')) {
+      return;
+    }
+    const result = await discardDraft();
+    if (result.success) {
+      await refetch(); // Refresh to show published state
+    } else {
+      alert('Failed to discard: ' + (result.error || 'Unknown error'));
+    }
   };
 
   const handleEditBufferChange = (dayKey: string, staffId: string, value: string) => {
@@ -578,9 +609,12 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           isEditMode={isEditMode}
           isAdmin={isAdmin}
           isOnline={isOnline}
+          hasDraft={hasDraft}
           onEnterEditMode={handleEnterEditMode}
           onSaveChanges={handleSaveChanges}
           onCancelEdit={() => setIsEditMode(false)}
+          onPublish={handlePublish}
+          onDiscardDraft={handleDiscardDraft}
           onDownloadCSV={handleDownloadCSV}
           onDownloadPDF={handleDownloadPDF}
           onPrevMonth={handlePrevMonth}
@@ -638,7 +672,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 // Sub-Components for a Cleaner Structure
 // ================================================================================================
 
-function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, isOnline, onEnterEditMode, onSaveChanges, onCancelEdit, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday, mode, onLoginClick, hideTitle = false }: {
+function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, isOnline, hasDraft, onEnterEditMode, onSaveChanges, onCancelEdit, onPublish, onDiscardDraft, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday, mode, onLoginClick, hideTitle = false }: {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
@@ -646,9 +680,12 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   isEditMode: boolean;
   isAdmin: boolean;
   isOnline: boolean;
+  hasDraft: boolean;
   onEnterEditMode: () => void;
   onSaveChanges: () => void;
   onCancelEdit: () => void;
+  onPublish: () => void;
+  onDiscardDraft: () => void;
   onDownloadCSV: () => void;
   onDownloadPDF: () => void;
   onPrevMonth: () => void;
@@ -755,18 +792,39 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
                 <Printer size={14}/>
                 <span>PDF</span>
               </button>
-              {/* Edit Mode / Save / Cancel Buttons */}
+              {/* Draft Workflow Buttons */}
               {isEditMode ? (
+                /* State 1: Currently editing - Show Save Draft + Cancel */
                 <>
                   <button onClick={onSaveChanges} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
                     <Save size={14}/>
-                    <span className="hidden sm:inline">Save</span>
+                    <span className="hidden sm:inline">Save Draft</span>
                   </button>
                   <button onClick={onCancelEdit} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
                     <X size={16}/>
                   </button>
                 </>
+              ) : hasDraft ? (
+                /* State 2: Has draft, not editing - Show Publish + Discard + Edit */
+                <>
+                  <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full hidden sm:inline">
+                    Unpublished
+                  </span>
+                  <button onClick={onPublish} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors">
+                    <Check size={14}/>
+                    <span className="hidden sm:inline">Publish</span>
+                  </button>
+                  <button onClick={onDiscardDraft} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-md text-sm font-medium hover:bg-red-100 transition-colors">
+                    <Trash2 size={14}/>
+                    <span className="hidden sm:inline">Discard</span>
+                  </button>
+                  <button onClick={onEnterEditMode} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <Edit size={14}/>
+                    <span className="hidden sm:inline">Edit</span>
+                  </button>
+                </>
               ) : (
+                /* State 3: No draft, not editing - Show Edit button */
                 <button onClick={onEnterEditMode} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
                   <Edit size={14}/>
                   <span className="hidden sm:inline">Edit Mode</span>

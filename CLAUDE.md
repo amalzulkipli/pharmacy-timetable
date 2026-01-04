@@ -138,6 +138,21 @@ Main UI (~1400 lines), accepts `mode` prop:
 
 7. **Authentication:** Cookie-based auth via `useAuth` hook. Login sets `pharmacy-admin-auth` cookie (24h expiry) for middleware protection. Password stored in `NEXT_PUBLIC_ADMIN_PASSWORD` env var.
 
+### Offline Sync Strategy
+
+The `useScheduleOverridesDB` hook implements an offline-first pattern:
+- **Online:** Fetches from `/api/overrides`, caches result to localStorage
+- **Offline:** Loads from localStorage cache, queues changes to pending storage
+- **Reconnect:** Auto-syncs pending changes when network returns
+- **Priority:** Pending changes override cached data (most recent edits win)
+
+### Schedule Pattern Matching
+
+When looking up shift patterns:
+- `getISOWeek()` from date-fns determines week number
+- ISO week numbers differ from calendar week numbers (week starts Monday, week 1 contains Jan 4)
+- Pattern matching in `findShiftKey()` uses startTime + endTime + workHours tuple
+
 ## PDF Generation
 
 Tailwind CSS v4's `oklch()` colors are incompatible with html2canvas. Solution: Puppeteer server-side rendering.
@@ -148,3 +163,11 @@ Tailwind CSS v4's `oklch()` colors are incompatible with html2canvas. Solution: 
 ```
 
 **Layout:** A4 landscape, 2 weeks per page, CSS Grid fixes for Puppeteer.
+
+## Mobile Responsiveness
+
+- **Breakpoint:** 768px (Tailwind `md`)
+- **Mobile:** Bottom navigation tabs, `MobileStaffCard` with avatars using `AVATAR_COLORS`
+- **Desktop:** Side tabs in AdminPanel, full calendar grid with staff cards
+
+Admin logout button visibility is controlled via mobile-specific styling in `Calendar.tsx`.

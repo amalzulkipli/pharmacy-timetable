@@ -13,33 +13,45 @@ function findShiftKey(shift: { startTime: string; endTime: string; workHours: nu
   return null;
 }
 
-// GET /api/overrides?year=2025&month=1
+// GET /api/overrides?year=2025&month=1&view=published|admin
+// view=published (default): Returns only published ScheduleOverride data
+// view=admin: Returns ScheduleDraft if exists, otherwise ScheduleOverride
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const year = parseInt(searchParams.get('year') || String(new Date().getFullYear()));
     const month = parseInt(searchParams.get('month') || String(new Date().getMonth() + 1));
+    const view = searchParams.get('view') || 'published'; // 'published' | 'admin'
 
     const startDate = startOfMonth(new Date(year, month - 1));
     const endDate = endOfMonth(new Date(year, month - 1));
 
-    const [scheduleOverrides, replacementShifts] = await Promise.all([
-      prisma.scheduleOverride.findMany({
-        where: {
-          date: { gte: startDate, lte: endDate },
-        },
-      }),
+    // Check if draft exists for this month
+    const draftMonth = await prisma.draftMonth.findUnique({
+      where: { year_month: { year, month } },
+    });
+    const hasDraft = !!draftMonth;
+
+    // Determine which table to fetch from
+    const useDraft = view === 'admin' && hasDraft;
+
+    const [scheduleData, replacementShifts] = await Promise.all([
+      useDraft
+        ? prisma.scheduleDraft.findMany({
+            where: { date: { gte: startDate, lte: endDate } },
+          })
+        : prisma.scheduleOverride.findMany({
+            where: { date: { gte: startDate, lte: endDate } },
+          }),
       prisma.replacementShift.findMany({
-        where: {
-          date: { gte: startDate, lte: endDate },
-        },
+        where: { date: { gte: startDate, lte: endDate } },
       }),
     ]);
 
     // Transform to match current localStorage structure
     const overridesByDate: Record<string, Record<string, unknown>> = {};
 
-    scheduleOverrides.forEach((override) => {
+    scheduleData.forEach((override) => {
       const dateKey = format(override.date, 'yyyy-MM-dd');
       if (!overridesByDate[dateKey]) overridesByDate[dateKey] = {};
 
@@ -65,14 +77,23 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    return NextResponse.json(overridesByDate);
+    // Return data with metadata
+    return NextResponse.json({
+      data: overridesByDate,
+      meta: {
+        hasDraft,
+        year,
+        month,
+      },
+    });
   } catch (error) {
     console.error('Error fetching overrides:', error);
     return NextResponse.json({ error: 'Failed to fetch overrides' }, { status: 500 });
   }
 }
 
-// POST /api/overrides - Bulk save overrides for a month
+// POST /api/overrides - Save overrides as DRAFT (not published)
+// Leave balances are NOT updated here - only on publish
 export async function POST(request: NextRequest) {
   try {
     const { year, month, overrides } = await request.json();
@@ -86,157 +107,69 @@ export async function POST(request: NextRequest) {
 
     // Use transaction for atomic updates
     await prisma.$transaction(async (tx) => {
-      // Delete existing overrides for this month
-      await tx.scheduleOverride.deleteMany({
-        where: { date: { gte: startDate, lte: endDate } },
-      });
-      await tx.replacementShift.deleteMany({
+      // Delete existing drafts for this month
+      await tx.scheduleDraft.deleteMany({
         where: { date: { gte: startDate, lte: endDate } },
       });
 
-      // Track leave changes for balance updates
-      const leaveChanges: { staffId: string; leaveType: string; date: Date; action: 'add' | 'remove' }[] = [];
-
-      // Insert new overrides
+      // Insert new draft overrides
       for (const [dateKey, dayOverrides] of Object.entries(overrides)) {
         const date = parseISO(dateKey);
 
         for (const [key, value] of Object.entries(dayOverrides as Record<string, unknown>)) {
+          // Skip replacements for now (they go directly to ReplacementShift)
           if (key === 'replacements') {
-            // Handle replacement shifts
-            const replacements = value as Array<{
-              originalStaffId: string;
-              tempStaffName: string;
-              startTime: string;
-              endTime: string;
-              workHours: number;
-            }>;
-
-            for (const rep of replacements) {
-              await tx.replacementShift.create({
-                data: {
-                  date,
-                  originalStaffId: rep.originalStaffId,
-                  tempStaffName: rep.tempStaffName,
-                  startTime: rep.startTime,
-                  endTime: rep.endTime,
-                  workHours: rep.workHours,
-                },
-              });
-            }
-          } else {
-            // Handle staff schedule override
-            const override = value as {
-              shift?: { startTime: string; endTime: string; workHours: number };
-              isLeave: boolean;
-              leaveType?: string;
-            };
-
-            let shiftType: string | null = null;
-            if (override.shift) {
-              shiftType = findShiftKey(override.shift);
-            }
-
-            await tx.scheduleOverride.upsert({
-              where: {
-                date_staffId: { date, staffId: key },
-              },
-              update: {
-                shiftType,
-                isLeave: override.isLeave || false,
-                leaveType: override.leaveType || null,
-              },
-              create: {
-                date,
-                staffId: key,
-                shiftType,
-                isLeave: override.isLeave || false,
-                leaveType: override.leaveType || null,
-              },
-            });
-
-            // Track leave for balance updates
-            if (override.isLeave && override.leaveType) {
-              leaveChanges.push({
-                staffId: key,
-                leaveType: override.leaveType,
-                date,
-                action: 'add',
-              });
-            }
+            continue;
           }
+
+          // Handle staff schedule draft
+          const override = value as {
+            shift?: { startTime: string; endTime: string; workHours: number };
+            isLeave: boolean;
+            leaveType?: string;
+          };
+
+          let shiftType: string | null = null;
+          if (override.shift) {
+            shiftType = findShiftKey(override.shift);
+          }
+
+          await tx.scheduleDraft.upsert({
+            where: {
+              date_staffId: { date, staffId: key },
+            },
+            update: {
+              shiftType,
+              isLeave: override.isLeave || false,
+              leaveType: override.leaveType || null,
+            },
+            create: {
+              date,
+              staffId: key,
+              shiftType,
+              isLeave: override.isLeave || false,
+              leaveType: override.leaveType || null,
+            },
+          });
         }
       }
 
-      // Update leave balances and history
-      for (const change of leaveChanges) {
-        if (change.leaveType === 'AL' || change.leaveType === 'RL' || change.leaveType === 'ML') {
-          // Check if leave history already exists for this date/staff
-          const existingHistory = await tx.leaveHistory.findFirst({
-            where: {
-              staffId: change.staffId,
-              date: change.date,
-              status: 'approved',
-            },
-          });
-
-          if (!existingHistory) {
-            // Create leave history entry
-            await tx.leaveHistory.create({
-              data: {
-                staffId: change.staffId,
-                date: change.date,
-                leaveType: change.leaveType,
-                status: 'approved',
-              },
-            });
-
-            // Update balance - use the leave date's year, not the calendar view year
-            const leaveYear = change.date.getFullYear();
-            const fieldMap: Record<string, string> = {
-              AL: 'alUsed',
-              RL: 'rlUsed',
-              ML: 'mlUsed',
-            };
-            const field = fieldMap[change.leaveType];
-            await tx.leaveBalance.updateMany({
-              where: { staffId: change.staffId, year: leaveYear },
-              data: { [field]: { increment: 1 } },
-            });
-          }
-        } else if (change.leaveType === 'EL') {
-          // EL doesn't have balance tracking, just record history
-          const existingHistory = await tx.leaveHistory.findFirst({
-            where: {
-              staffId: change.staffId,
-              date: change.date,
-              status: 'approved',
-            },
-          });
-
-          if (!existingHistory) {
-            await tx.leaveHistory.create({
-              data: {
-                staffId: change.staffId,
-                date: change.date,
-                leaveType: 'EL',
-                status: 'approved',
-              },
-            });
-          }
-        }
-      }
+      // Mark this month as having a draft
+      await tx.draftMonth.upsert({
+        where: { year_month: { year, month } },
+        update: { updatedAt: new Date() },
+        create: { year, month },
+      });
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, isDraft: true });
   } catch (error) {
-    console.error('Error saving overrides:', error);
-    // Log more details for debugging
+    console.error('Error saving draft:', error);
     if (error instanceof Error) {
       console.error('Error details:', error.message, error.stack);
     }
     return NextResponse.json(
-      { error: 'Failed to save overrides', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to save draft', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

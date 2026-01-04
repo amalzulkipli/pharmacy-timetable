@@ -30,6 +30,7 @@ model Staff {
 
   // Relations
   scheduleOverrides ScheduleOverride[]
+  scheduleDrafts    ScheduleDraft[]
   leaveBalances     LeaveBalance[]
   leaveHistory      LeaveHistory[]
 
@@ -148,4 +149,41 @@ model PublicHoliday {
 
   @@index([year])
   @@index([date])
+}
+
+// ============================================
+// SCHEDULE DRAFTS (unpublished changes)
+// ============================================
+
+model ScheduleDraft {
+  id        String   @id @default(cuid())
+  date      DateTime // The specific date being overridden
+  staffId   String // Foreign key to Staff.staffId
+
+  // Override data (same structure as ScheduleOverride)
+  shiftType String? // e.g., "11h", "9h_early", null for off
+  isLeave   Boolean @default(false)
+  leaveType String? // "AL" | "RL" | "EL" | "ML" | null
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  staff Staff @relation(fields: [staffId], references: [staffId])
+
+  @@unique([date, staffId])
+  @@index([date])
+  @@index([staffId])
+}
+
+// Tracks which months have unpublished drafts
+model DraftMonth {
+  id        String   @id @default(cuid())
+  year      Int
+  month     Int // 1-12
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([year, month])
 }
