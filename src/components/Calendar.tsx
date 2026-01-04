@@ -66,9 +66,8 @@ interface CalendarProps {
 }
 
 export default function Calendar({ mode = 'public', hideTitle = false, hideMobileLogout = false, onMobileTabChange }: CalendarProps) {
-  const authContext = useAuth();
-  // In admin mode, always treat as admin; in public mode, use auth context
-  const isAdmin = mode === 'admin' || authContext.isAdmin;
+  // Respect mode prop: if mode is 'public', never show admin features
+  const isAdmin = mode === 'admin' ? true : false;
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [schedule, setSchedule] = useState<MonthSchedule | null>(null);
