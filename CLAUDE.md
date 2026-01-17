@@ -28,7 +28,7 @@ The project uses TypeScript with strict mode. Path alias: `@/*` maps to `./src/*
 ### Environment Variables
 Required in `.env`:
 ```bash
-DATABASE_URL="file:./prisma/pharmacy.db"   # SQLite database path
+DATABASE_URL="file:./pharmacy.db"   # SQLite database path (relative to prisma/schema.prisma)
 NEXT_PUBLIC_ADMIN_PASSWORD=<password>       # Admin login password
 ```
 
@@ -36,7 +36,7 @@ NEXT_PUBLIC_ADMIN_PASSWORD=<password>       # Admin login password
 
 ### Tech Stack
 - **Framework:** Next.js 15.5.9 (App Router, Turbopack)
-- **Database:** Prisma 6.19.1 with SQLite (`prisma/prisma/pharmacy.db`)
+- **Database:** Prisma 6.19.1 with SQLite (`prisma/pharmacy.db`)
 - **UI:** React 19, TypeScript, Tailwind CSS v4
 - **PDF Generation:** Puppeteer (server-side)
 - **Date Utilities:** date-fns
@@ -145,6 +145,8 @@ Main UI (~1400 lines), accepts `mode` prop:
 6. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
 
 7. **Authentication:** Cookie-based auth via `useAuth` hook. Login sets `pharmacy-admin-auth` cookie (24h expiry) for middleware protection. Password stored in `NEXT_PUBLIC_ADMIN_PASSWORD` env var.
+
+8. **StaffCard Edit Mode Colors:** In `StaffCard` (~line 988), card colors use `editValue` prop when in edit mode (not `staffShift` data) so colors update immediately on dropdown change.
 
 ### Draft/Publish Workflow
 

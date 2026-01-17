@@ -5,7 +5,7 @@ import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, ex
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS, AVATAR_COLORS } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, Clock, Calendar as CalendarIcon, Printer, Check, Trash2, Menu } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, Clock, Calendar as CalendarIcon, Printer, Check, Trash2, Menu, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import LoginModal from './LoginModal';
@@ -74,6 +74,19 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   const [schedule, setSchedule] = useState<MonthSchedule | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBuffer, setEditBuffer] = useState<Record<string, Record<string, string>>>({});
+
+  // Clipboard state for copied week (copy/paste feature)
+  const [copiedWeek, setCopiedWeek] = useState<{
+    weekNumber: number;
+    data: Record<string, string>;  // Key: "dayOfWeek_staffId", Value: shiftKey
+    label: string;                 // e.g., "W1 (Dec 30-)"
+  } | null>(null);
+
+  // State for week action popup (copy/paste menu)
+  const [weekMenuOpen, setWeekMenuOpen] = useState<{
+    weekNumber: number;
+    position: { x: number; y: number };
+  } | null>(null);
 
   // Type for override structure
   type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' } | ReplacementShift[]>;
@@ -313,7 +326,14 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     setEditBuffer(buffer);
     setIsEditMode(true);
   };
-  
+
+  // Cancel edit mode and clear clipboard
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setCopiedWeek(null);
+    setWeekMenuOpen(null);
+  };
+
   const handleSaveChanges = async () => {
     const newOverrides = { ...manualOverrides };
     Object.keys(editBuffer).forEach(dayKey => {
@@ -384,6 +404,76 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       return;
     }
     setEditBuffer(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], [staffId]: value } }));
+  };
+
+  // Copy all shifts from a week (by ISO week number)
+  const handleCopyWeek = (weekNumber: number) => {
+    const weekData: Record<string, string> = {};
+
+    // Collect shifts for all days in this ISO week
+    Object.entries(editBuffer).forEach(([dateKey, staffShifts]) => {
+      const date = new Date(dateKey);
+      if (getISOWeek(date) === weekNumber) {
+        const dayOfWeek = date.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+        Object.entries(staffShifts).forEach(([staffId, shiftKey]) => {
+          weekData[`${dayOfWeek}_${staffId}`] = shiftKey;
+        });
+      }
+    });
+
+    // Get first day of week for label
+    const firstDay = Object.keys(editBuffer).find(
+      dk => getISOWeek(new Date(dk)) === weekNumber
+    );
+    const label = firstDay
+      ? `W${weekNumber} (${format(new Date(firstDay), 'MMM d')}-)`
+      : `W${weekNumber}`;
+
+    setCopiedWeek({ weekNumber, data: weekData, label });
+    setWeekMenuOpen(null); // Close popup after copying
+  };
+
+  // Paste copied week to target week (by ISO week number)
+  const handlePasteWeek = (targetWeekNumber: number) => {
+    if (!copiedWeek) return;
+
+    setEditBuffer(prev => {
+      const newBuffer = { ...prev };
+
+      Object.keys(newBuffer).forEach(dateKey => {
+        const date = new Date(dateKey);
+        if (getISOWeek(date) === targetWeekNumber) {
+          const dayOfWeek = date.getDay();
+
+          STAFF_MEMBERS.forEach(staff => {
+            const key = `${dayOfWeek}_${staff.id}`;
+            if (copiedWeek.data[key]) {
+              newBuffer[dateKey] = {
+                ...newBuffer[dateKey],
+                [staff.id]: copiedWeek.data[key]
+              };
+            }
+          });
+        }
+      });
+
+      return newBuffer;
+    });
+
+    setWeekMenuOpen(null); // Close popup after pasting
+  };
+
+  // Handle clicking the kebab menu on Sunday
+  const handleWeekMenuClick = (e: React.MouseEvent, weekNumber: number) => {
+    e.stopPropagation(); // Prevent triggering other click handlers
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setWeekMenuOpen({
+      weekNumber,
+      position: {
+        x: rect.left - 160, // Position popup to the left of the button
+        y: rect.bottom + 4, // Position below the button
+      }
+    });
   };
 
   const handleSaveReplacement = async (name: string, start: string, end: string, breakHours: string) => {
@@ -658,7 +748,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           editBuffer={editBuffer}
           hasDraft={hasDraft}
           onEnterEditMode={handleEnterEditMode}
-          onCancelEdit={() => setIsEditMode(false)}
+          onCancelEdit={handleCancelEdit}
           onSaveChanges={handleSaveChanges}
           onPublish={handlePublish}
           onDiscardDraft={handleDiscardDraft}
@@ -704,7 +794,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           hasDraft={hasDraft}
           onEnterEditMode={handleEnterEditMode}
           onSaveChanges={handleSaveChanges}
-          onCancelEdit={() => setIsEditMode(false)}
+          onCancelEdit={handleCancelEdit}
           onPublish={handlePublish}
           onDiscardDraft={handleDiscardDraft}
           onDownloadCSV={handleDownloadCSV}
@@ -715,6 +805,8 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           mode={mode}
           onLoginClick={() => setLoginModalOpen(true)}
           hideTitle={hideTitle}
+          copiedWeekNumber={copiedWeek?.weekNumber}
+          onClearClipboard={() => setCopiedWeek(null)}
         />
 
         <div id="calendar-container" className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -729,6 +821,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
                 isEditMode={isEditMode}
                 editBuffer={editBuffer}
                 onEditBufferChange={handleEditBufferChange}
+                onWeekMenuClick={handleWeekMenuClick}
               />
             ))}
           </div>
@@ -769,6 +862,18 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
             onConfirm={handleMaternityLeaveConfirm}
           />
         )}
+
+        {/* Week Action Popup (Copy/Paste) */}
+        {weekMenuOpen && (
+          <WeekActionPopup
+            weekNumber={weekMenuOpen.weekNumber}
+            position={weekMenuOpen.position}
+            copiedWeek={copiedWeek}
+            onCopy={() => handleCopyWeek(weekMenuOpen.weekNumber)}
+            onPaste={() => handlePasteWeek(weekMenuOpen.weekNumber)}
+            onClose={() => setWeekMenuOpen(null)}
+          />
+        )}
       </div>
     </div>
   );
@@ -778,7 +883,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 // Sub-Components for a Cleaner Structure
 // ================================================================================================
 
-function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, isOnline, hasDraft, onEnterEditMode, onSaveChanges, onCancelEdit, onPublish, onDiscardDraft, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday, mode, onLoginClick, hideTitle = false }: {
+function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, isOnline, hasDraft, onEnterEditMode, onSaveChanges, onCancelEdit, onPublish, onDiscardDraft, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday, mode, onLoginClick, hideTitle = false, copiedWeekNumber, onClearClipboard }: {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
@@ -800,6 +905,8 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   mode: 'public' | 'admin';
   onLoginClick: () => void;
   hideTitle?: boolean;
+  copiedWeekNumber?: number | null;
+  onClearClipboard?: () => void;
 }) {
   return (
     <div className="mb-4">
@@ -900,8 +1007,12 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
               </button>
               {/* Draft Workflow Buttons */}
               {isEditMode ? (
-                /* State 1: Currently editing - Show Save Draft + Cancel */
+                /* State 1: Currently editing - Show Clipboard Badge + Save Draft + Cancel */
                 <>
+                  {/* Clipboard Badge - shows copied week */}
+                  {copiedWeekNumber && onClearClipboard && (
+                    <ClipboardBadge weekNumber={copiedWeekNumber} onClear={onClearClipboard} />
+                  )}
                   <button onClick={onSaveChanges} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
                     <Save size={14}/>
                     <span className="hidden sm:inline">Save Draft</span>
@@ -944,10 +1055,18 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   );
 }
 
-function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day: DaySchedule, isEditMode: boolean, editBuffer: Record<string, Record<string, string>>, onEditBufferChange: (dayKey: string, staffId: string, value: string) => void }) {
+function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, onWeekMenuClick }: {
+  day: DaySchedule,
+  isEditMode: boolean,
+  editBuffer: Record<string, Record<string, string>>,
+  onEditBufferChange: (dayKey: string, staffId: string, value: string) => void,
+  onWeekMenuClick?: (e: React.MouseEvent, weekNumber: number) => void
+}) {
   const dayKey = format(day.date, 'yyyy-MM-dd');
   const today = new Date();
   const isToday = format(day.date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+  const isSunday = day.date.getDay() === 0; // 0 = Sunday
+  const weekNumber = getISOWeek(day.date);
 
   return (
     <div className={`border-t border-l border-gray-100 p-2 md:p-3 min-h-[160px] md:min-h-[200px] ${day.isHoliday ? 'bg-red-50' : day.isCurrentMonth ? 'bg-white' : 'bg-gray-50/50'}`}>
@@ -960,11 +1079,23 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day:
         ) : (
           <span className={`font-semibold text-sm ${!day.isCurrentMonth ? 'text-gray-300' : 'text-gray-700'}`}>{format(day.date, 'd')}</span>
         )}
-        {day.isHoliday ? (
-          <span className="text-[10px] md:text-xs text-red-500 font-medium truncate max-w-[50px] md:max-w-[80px]" title={day.holidayName}>{day.holidayName}</span>
-        ) : (
-          <span className="text-[10px] md:text-xs text-gray-400 font-medium">W{getISOWeek(day.date)}</span>
-        )}
+        {/* Right side: Week number or holiday, with kebab menu on Sundays in edit mode */}
+        <div className="flex items-center gap-1">
+          {isEditMode && isSunday && onWeekMenuClick && (
+            <button
+              onClick={(e) => onWeekMenuClick(e, weekNumber)}
+              className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+              title={`Week ${weekNumber} actions`}
+            >
+              <MoreVertical size={14} className="text-gray-400" />
+            </button>
+          )}
+          {day.isHoliday ? (
+            <span className="text-[10px] md:text-xs text-red-500 font-medium truncate max-w-[50px] md:max-w-[80px]" title={day.holidayName}>{day.holidayName}</span>
+          ) : (
+            <span className="text-[10px] md:text-xs text-gray-400 font-medium">W{weekNumber}</span>
+          )}
+        </div>
       </div>
       <div className="space-y-1 md:space-y-2">
         {STAFF_MEMBERS.map(staff => (
@@ -988,7 +1119,16 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange }: { day:
 function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff: StaffMember, day: DaySchedule, isEditMode: boolean, editValue: string, onEditChange: (value: string) => void }) {
   const staffShift = day.staffShifts[staff.id];
   const colorTheme = STAFF_COLORS[staff.id];
-  const isOff = !staffShift.shift && !staffShift.isLeave;
+
+  // Determine if "off" based on edit mode state
+  let isOff: boolean;
+  if (isEditMode && editValue) {
+    // In edit mode, use the pending editValue to determine color
+    isOff = editValue === 'off';
+  } else {
+    // Not in edit mode, use current staffShift data
+    isOff = !staffShift.shift && !staffShift.isLeave;
+  }
 
   // Use grey styling when staff is off
   const cardBg = isOff ? 'bg-gray-50' : colorTheme.bg;
@@ -1077,6 +1217,81 @@ function ShiftDropdown({ value, onChange }: { value: string, onChange: (value: s
         })}
       </optgroup>
     </select>
+  );
+}
+
+// Week action popup for copy/paste functionality
+interface WeekActionPopupProps {
+  weekNumber: number;
+  position: { x: number; y: number };
+  copiedWeek: { weekNumber: number; label: string } | null;
+  onCopy: () => void;
+  onPaste: () => void;
+  onClose: () => void;
+}
+
+function WeekActionPopup({ weekNumber, position, copiedWeek, onCopy, onPaste, onClose }: WeekActionPopupProps) {
+  // Close popup when clicking outside
+  const popupRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    // Add listener with delay to avoid immediate close from the triggering click
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [onClose]);
+
+  const canPaste = copiedWeek && copiedWeek.weekNumber !== weekNumber;
+
+  return (
+    <div
+      ref={popupRef}
+      className="fixed bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[160px]"
+      style={{ top: position.y, left: Math.max(8, position.x) }}
+    >
+      <button
+        onClick={onCopy}
+        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-700"
+      >
+        <Copy size={14} />
+        Copy W{weekNumber}
+      </button>
+      <div className="border-t border-gray-100 my-1" />
+      <button
+        onClick={onPaste}
+        disabled={!canPaste}
+        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 disabled:text-gray-400"
+      >
+        <ClipboardPaste size={14} />
+        {copiedWeek ? `Paste W${copiedWeek.weekNumber}` : 'Paste (nothing copied)'}
+      </button>
+    </div>
+  );
+}
+
+// Clipboard badge shown in toolbar when a week is copied
+function ClipboardBadge({ weekNumber, onClear }: { weekNumber: number; onClear: () => void }) {
+  return (
+    <button
+      onClick={onClear}
+      className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200 transition-colors"
+      title="Click to clear clipboard"
+    >
+      W{weekNumber}
+      <Clipboard size={12} />
+      <X size={12} />
+    </button>
   );
 }
 
