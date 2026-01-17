@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
       // Update leave balances and history
       for (const change of leaveChanges) {
-        if (change.leaveType === 'AL' || change.leaveType === 'RL' || change.leaveType === 'ML') {
+        if (change.leaveType === 'AL' || change.leaveType === 'RL' || change.leaveType === 'ML' || change.leaveType === 'MAT') {
           // Check if leave history already exists for this date/staff
           const existingHistory = await tx.leaveHistory.findFirst({
             where: {
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
               AL: 'alUsed',
               RL: 'rlUsed',
               ML: 'mlUsed',
+              MAT: 'matUsed',
             };
             const field = fieldMap[change.leaveType];
             await tx.leaveBalance.updateMany({

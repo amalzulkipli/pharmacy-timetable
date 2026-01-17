@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Check, X, Clock, Calendar, Stethoscope } from 'lucide-react';
+import { Check, X, Clock, Calendar, Stethoscope, Baby } from 'lucide-react';
 import { SHIFT_DEFINITIONS, AVATAR_COLORS } from '@/staff-data';
 import type { StaffMember } from '@/types/schedule';
 
@@ -11,13 +11,15 @@ interface ShiftPickerBottomSheetProps {
   staff: StaffMember;
   currentValue: string;
   onSelect: (shiftKey: string) => void;
+  onMaternitySelect?: () => void;
 }
 
 const LEAVE_OPTIONS = [
-  { key: 'AL', label: 'Annual Leave', color: 'text-blue-600' },
-  { key: 'RL', label: 'Replacement Leave', color: 'text-green-600' },
-  { key: 'EL', label: 'Emergency Leave', color: 'text-orange-600' },
-  { key: 'ML', label: 'Medical Leave', color: 'text-red-600' },
+  { key: 'AL', label: 'Annual Leave', color: 'text-blue-600', hasModal: false },
+  { key: 'RL', label: 'Replacement Leave', color: 'text-green-600', hasModal: false },
+  { key: 'EL', label: 'Emergency Leave', color: 'text-orange-600', hasModal: false },
+  { key: 'ML', label: 'Medical Leave', color: 'text-red-600', hasModal: false },
+  { key: 'MAT', label: 'Maternity Leave (98 days)', color: 'text-blue-600', hasModal: true },
 ];
 
 export default function ShiftPickerBottomSheet({
@@ -26,6 +28,7 @@ export default function ShiftPickerBottomSheet({
   staff,
   currentValue,
   onSelect,
+  onMaternitySelect,
 }: ShiftPickerBottomSheetProps) {
   // Prevent body scroll when sheet is open
   useEffect(() => {
@@ -39,7 +42,12 @@ export default function ShiftPickerBottomSheet({
     };
   }, [isOpen]);
 
-  const handleSelect = (value: string) => {
+  const handleSelect = (value: string, hasModal?: boolean) => {
+    if (hasModal && value === 'MAT' && onMaternitySelect) {
+      onClose();
+      onMaternitySelect();
+      return;
+    }
     onSelect(value);
     onClose();
   };
@@ -160,12 +168,12 @@ export default function ShiftPickerBottomSheet({
             </div>
             {LEAVE_OPTIONS.map((leave) => {
               const isSelected = currentValue === leave.key;
-              const Icon = leave.key === 'ML' ? Stethoscope : Calendar;
+              const Icon = leave.key === 'ML' ? Stethoscope : leave.key === 'MAT' ? Baby : Calendar;
 
               return (
                 <button
                   key={leave.key}
-                  onClick={() => handleSelect(leave.key)}
+                  onClick={() => handleSelect(leave.key, leave.hasModal)}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
                     isSelected
                       ? 'bg-blue-50 text-blue-900'

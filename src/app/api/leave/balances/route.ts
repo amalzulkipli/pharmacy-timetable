@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export interface MaternityPeriod {
+  startDate: string;
+  endDate: string;
+}
+
 export interface LeaveBalanceSummary {
   staffId: string;
   staffName: string;
@@ -21,6 +26,12 @@ export interface LeaveBalanceSummary {
     used: number;
     remaining: number;
   };
+  mat: {
+    entitlement: number;
+    used: number;
+    remaining: number;
+    activePeriod?: MaternityPeriod;
+  };
 }
 
 // GET /api/leave/balances?year=2025
@@ -35,6 +46,20 @@ export async function GET(request: NextRequest) {
         staff: { isActive: true },
       },
       include: { staff: true },
+    });
+
+    // Fetch active maternity leave periods for all staff
+    const maternityPeriods = await prisma.maternityLeavePeriod.findMany({
+      where: { status: 'active' },
+    });
+
+    // Create a map of staffId to active maternity period
+    const maternityMap = new Map<string, MaternityPeriod>();
+    maternityPeriods.forEach((period) => {
+      maternityMap.set(period.staffId, {
+        startDate: period.startDate.toISOString(),
+        endDate: period.endDate.toISOString(),
+      });
     });
 
     const summaries: LeaveBalanceSummary[] = balances.map((b) => ({
@@ -56,6 +81,12 @@ export async function GET(request: NextRequest) {
         entitlement: b.mlEntitlement,
         used: b.mlUsed,
         remaining: b.mlEntitlement - b.mlUsed,
+      },
+      mat: {
+        entitlement: b.matEntitlement,
+        used: b.matUsed,
+        remaining: b.matEntitlement - b.matUsed,
+        activePeriod: maternityMap.get(b.staffId),
       },
     }));
 
@@ -93,10 +124,13 @@ export async function POST(request: NextRequest) {
           rlUsed: 0,
           mlEntitlement: member.mlEntitlement,
           mlUsed: 0,
+          matEntitlement: member.matEntitlement,
+          matUsed: 0,
         },
         update: {
           alEntitlement: member.alEntitlement,
           mlEntitlement: member.mlEntitlement,
+          matEntitlement: member.matEntitlement,
         },
       });
     }

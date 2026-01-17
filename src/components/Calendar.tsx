@@ -13,6 +13,7 @@ import StaffHoursOverview from './admin/StaffHoursOverview';
 import MobileDrawerMenu, { type Tab } from './mobile/MobileDrawerMenu';
 import ShiftPickerBottomSheet from './mobile/ShiftPickerBottomSheet';
 import FloatingActionButton from './mobile/FloatingActionButton';
+import MaternityLeaveModal from './MaternityLeaveModal';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -75,11 +76,13 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   const [editBuffer, setEditBuffer] = useState<Record<string, Record<string, string>>>({});
 
   // Type for override structure
-  type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' } | ReplacementShift[]>;
+  type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' } | ReplacementShift[]>;
 
-  // Calculate previous month for fetching adjacent month overrides
+  // Calculate previous and next month for fetching adjacent month overrides
   const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
   const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+  const nextMonth = selectedMonth === 12 ? 1 : selectedMonth + 1;
+  const nextYear = selectedMonth === 12 ? selectedYear + 1 : selectedYear;
 
   // Use database-backed hook for overrides (with localStorage fallback)
   const {
@@ -103,6 +106,16 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   } = useScheduleOverridesDB({
     year: prevYear,
     month: prevMonth,
+    view: mode === 'admin' ? 'admin' : 'public',
+  });
+
+  // Also fetch next month's overrides for days shown from adjacent month
+  const {
+    overrides: nextMonthOverrides,
+  } = useScheduleOverridesDB({
+    year: nextYear,
+    month: nextMonth,
+    view: mode === 'admin' ? 'admin' : 'public',
   });
 
   // Local state for manual overrides (synced from DB)
@@ -111,6 +124,10 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   // State for the replacement modal
   const [isReplacementModalOpen, setReplacementModalOpen] = useState(false);
   const [replacementContext, setReplacementContext] = useState<{ dayKey: string; staffId: string } | null>(null);
+
+  // State for the maternity leave modal
+  const [isMaternityModalOpen, setMaternityModalOpen] = useState(false);
+  const [maternityContext, setMaternityContext] = useState<{ dayKey: string; staffId: string } | null>(null);
 
   // State for the login modal
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
@@ -201,7 +218,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   };
 
   // --- Core Logic ---
-  // Sync local state with DB overrides (merge current + previous month for adjacent days)
+  // Sync local state with DB overrides (merge current + adjacent months for days shown in view)
   useEffect(() => {
     const mergedOverrides: Record<string, OverrideData> = {};
 
@@ -210,13 +227,18 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       Object.assign(mergedOverrides, prevMonthOverrides);
     }
 
+    // Add next month overrides (for days shown from adjacent month at end of view)
+    if (nextMonthOverrides) {
+      Object.assign(mergedOverrides, nextMonthOverrides);
+    }
+
     // Add current month overrides (these take precedence if any overlap)
     if (dbOverrides) {
       Object.assign(mergedOverrides, dbOverrides);
     }
 
     setManualOverrides(mergedOverrides as Record<string, OverrideData>);
-  }, [dbOverrides, prevMonthOverrides]);
+  }, [dbOverrides, prevMonthOverrides, nextMonthOverrides]);
 
   useEffect(() => {
     // Apply overrides to the base schedule
@@ -235,7 +257,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
             }
           } else {
             const staffId = staffIdOrAction;
-            const override = overrides[dayKey][staffId] as { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' };
+            const override = overrides[dayKey][staffId] as { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' };
             if (override && typeof override === 'object' && !Array.isArray(override)) {
               finalDay.staffShifts[staffId] = {
                 ...finalDay.staffShifts[staffId],
@@ -302,11 +324,11 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 
         let newShift: ShiftDefinition | null = null;
         let isLeave = false;
-        let leaveType: 'AL' | 'RL' | 'EL' | 'ML' | undefined = undefined;
+        let leaveType: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' | undefined = undefined;
 
         if (value.startsWith('leave')) {
           isLeave = true;
-          leaveType = value.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML';
+          leaveType = value.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML' | 'MAT';
         } else if (value !== 'off') {
           newShift = SHIFT_DEFINITIONS[value];
         }
@@ -355,6 +377,12 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       setReplacementModalOpen(true);
       return;
     }
+    // Intercept maternity leave selection to show modal
+    if (value === 'leave_mat') {
+      setMaternityContext({ dayKey, staffId });
+      setMaternityModalOpen(true);
+      return;
+    }
     setEditBuffer(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], [staffId]: value } }));
   };
 
@@ -399,6 +427,40 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     setReplacementContext(null);
     // Reset dropdown in buffer
     handleEditBufferChange(dayKey, staffId, 'off');
+  };
+
+  // Handle maternity leave confirmation
+  const handleMaternityLeaveConfirm = async (staffId: string, startDate: Date) => {
+    try {
+      const response = await fetch('/api/leave/maternity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId, startDate: startDate.toISOString() }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error('Server error. Please try again.');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create maternity leave');
+      }
+
+      // Exit edit mode first to prevent editBuffer from overwriting MAT entries
+      setIsEditMode(false);
+      setEditBuffer({});
+
+      // Refresh the calendar to show the new leave entries
+      await refetch();
+      setMaternityModalOpen(false);
+      setMaternityContext(null);
+    } catch (error) {
+      console.error('Error creating maternity leave:', error);
+      throw error;
+    }
   };
 
   const handleDownloadCSV = () => {
@@ -602,12 +664,29 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           onDiscardDraft={handleDiscardDraft}
           onEditBufferChange={handleEditBufferChange}
           onMobileTabChange={onMobileTabChange}
+          onOpenMaternityModal={(dayKey, staffId) => {
+            setMaternityContext({ dayKey, staffId });
+            setMaternityModalOpen(true);
+          }}
         />
         {/* Login Modal for mobile */}
         <LoginModal
           isOpen={isLoginModalOpen}
           onClose={() => setLoginModalOpen(false)}
         />
+        {/* Maternity Leave Modal for mobile */}
+        {maternityContext && (
+          <MaternityLeaveModal
+            isOpen={isMaternityModalOpen}
+            onClose={() => {
+              setMaternityModalOpen(false);
+              setMaternityContext(null);
+            }}
+            staffId={maternityContext.staffId}
+            initialDate={new Date(maternityContext.dayKey)}
+            onConfirm={handleMaternityLeaveConfirm}
+          />
+        )}
       </>
     );
   }
@@ -676,6 +755,20 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           isOpen={isLoginModalOpen}
           onClose={() => setLoginModalOpen(false)}
         />
+
+        {/* Maternity Leave Modal */}
+        {maternityContext && (
+          <MaternityLeaveModal
+            isOpen={isMaternityModalOpen}
+            onClose={() => {
+              setMaternityModalOpen(false);
+              setMaternityContext(null);
+            }}
+            staffId={maternityContext.staffId}
+            initialDate={new Date(maternityContext.dayKey)}
+            onConfirm={handleMaternityLeaveConfirm}
+          />
+        )}
       </div>
     </div>
   );
@@ -972,6 +1065,7 @@ function ShiftDropdown({ value, onChange }: { value: string, onChange: (value: s
         <option value="leave_rl">Replacement Leave</option>
         <option value="leave_el">Emergency Leave</option>
         <option value="leave_ml">Medical Leave</option>
+        <option value="leave_mat">Maternity Leave (98 days)...</option>
       </optgroup>
       <optgroup label="Actions">
          <option value="add_replacement">Add Replacement...</option>
@@ -1098,6 +1192,7 @@ interface MobileViewProps {
   onDiscardDraft: () => void;
   onEditBufferChange: (dayKey: string, staffId: string, value: string) => void;
   onMobileTabChange?: (tab: Tab) => void;
+  onOpenMaternityModal: (dayKey: string, staffId: string) => void;
 }
 
 function MobileView({
@@ -1126,6 +1221,7 @@ function MobileView({
   onDiscardDraft,
   onEditBufferChange,
   onMobileTabChange,
+  onOpenMaternityModal,
 }: MobileViewProps) {
   const { logout } = useAuth();
   const selectedDay = schedule.days[selectedDayIndex];
@@ -1169,10 +1265,18 @@ function MobileView({
     if (selectedStaffForEdit) {
       // Map the shift key to the correct format for editBuffer
       let bufferValue = shiftKey;
-      if (['AL', 'RL', 'EL', 'ML'].includes(shiftKey)) {
+      if (['AL', 'RL', 'EL', 'ML', 'MAT'].includes(shiftKey)) {
         bufferValue = `leave_${shiftKey.toLowerCase()}`;
       }
       onEditBufferChange(selectedStaffForEdit.dayKey, selectedStaffForEdit.staff.id, bufferValue);
+      setSelectedStaffForEdit(null);
+    }
+  };
+
+  // Handle maternity leave selection from bottom sheet (opens modal)
+  const handleMaternitySelect = () => {
+    if (selectedStaffForEdit) {
+      onOpenMaternityModal(selectedStaffForEdit.dayKey, selectedStaffForEdit.staff.id);
       setSelectedStaffForEdit(null);
     }
   };
@@ -1285,6 +1389,7 @@ function MobileView({
           staff={selectedStaffForEdit.staff}
           currentValue={getCurrentShiftValue()}
           onSelect={handleShiftSelect}
+          onMaternitySelect={handleMaternitySelect}
         />
       )}
     </div>
@@ -1470,7 +1575,7 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
     } else if (editValue.startsWith('leave_')) {
       displayShift = null;
       displayIsLeave = true;
-      displayLeaveType = editValue.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML';
+      displayLeaveType = editValue.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML' | 'MAT';
     } else if (SHIFT_DEFINITIONS[editValue]) {
       displayShift = SHIFT_DEFINITIONS[editValue];
       displayIsLeave = false;

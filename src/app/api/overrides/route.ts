@@ -107,9 +107,12 @@ export async function POST(request: NextRequest) {
 
     // Use transaction for atomic updates
     await prisma.$transaction(async (tx) => {
-      // Delete existing drafts for this month
+      // Delete existing drafts for this month, but PRESERVE maternity leave entries
       await tx.scheduleDraft.deleteMany({
-        where: { date: { gte: startDate, lte: endDate } },
+        where: {
+          date: { gte: startDate, lte: endDate },
+          NOT: { leaveType: 'MAT' } // Don't delete maternity leave entries
+        },
       });
 
       // Insert new draft overrides
@@ -132,6 +135,17 @@ export async function POST(request: NextRequest) {
           let shiftType: string | null = null;
           if (override.shift) {
             shiftType = findShiftKey(override.shift);
+          }
+
+          // Check if there's an existing MAT entry - don't overwrite it unless explicitly setting MAT
+          const existingEntry = await tx.scheduleDraft.findUnique({
+            where: { date_staffId: { date, staffId: key } },
+            select: { leaveType: true },
+          });
+
+          // Skip if existing entry is MAT and incoming is not MAT
+          if (existingEntry?.leaveType === 'MAT' && override.leaveType !== 'MAT') {
+            continue; // Preserve the MAT entry
           }
 
           await tx.scheduleDraft.upsert({

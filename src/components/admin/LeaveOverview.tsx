@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { LayoutGrid, RefreshCw, Loader2 } from 'lucide-react';
 import StaffLeaveCard from './StaffLeaveCard';
 
+interface MaternityPeriod {
+  startDate: string;
+  endDate: string;
+}
+
 interface LeaveBalance {
   staffId: string;
   staffName: string;
@@ -23,6 +28,12 @@ interface LeaveBalance {
     entitlement: number;
     used: number;
     remaining: number;
+  };
+  mat?: {
+    entitlement: number;
+    used: number;
+    remaining: number;
+    activePeriod?: MaternityPeriod;
   };
 }
 
@@ -169,6 +180,7 @@ export default function LeaveOverview() {
             al={balance.al}
             rl={balance.rl}
             ml={balance.ml}
+            mat={balance.mat}
             history={historyByStaff[balance.staffId] || []}
           />
         ))}
@@ -190,6 +202,8 @@ export default function LeaveOverview() {
           Use &quot;Refresh&quot; to update based on holidays.
           <br />
           <strong>ML:</strong> Medical Leave entitlement set per staff member.
+          <br />
+          <strong>MAT:</strong> Maternity Leave (98 days). Select from calendar to auto-create leave period.
         </p>
       </div>
     </div>

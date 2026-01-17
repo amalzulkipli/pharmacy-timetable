@@ -24,15 +24,17 @@ model Staff {
   defaultOffDays String // JSON array string: "[0,6]" for Sat/Sun (0=Sun, 6=Sat)
   alEntitlement  Int      @default(14) // Annual leave days per year
   mlEntitlement  Int      @default(14) // Medical leave days per year
+  matEntitlement Int      @default(98) // Maternity leave days
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   // Relations
-  scheduleOverrides ScheduleOverride[]
-  scheduleDrafts    ScheduleDraft[]
-  leaveBalances     LeaveBalance[]
-  leaveHistory      LeaveHistory[]
+  scheduleOverrides      ScheduleOverride[]
+  scheduleDrafts         ScheduleDraft[]
+  leaveBalances          LeaveBalance[]
+  leaveHistory           LeaveHistory[]
+  maternityLeavePeriods  MaternityLeavePeriod[]
 
   @@index([staffId])
 }
@@ -49,7 +51,7 @@ model ScheduleOverride {
   // Override data
   shiftType String? // e.g., "11h", "9h_early", null for off
   isLeave   Boolean @default(false)
-  leaveType String? // "AL" | "RL" | "EL" | "ML" | null
+  leaveType String? // "AL" | "RL" | "EL" | "ML" | "MAT" | null
 
   // Metadata
   createdAt DateTime @default(now())
@@ -104,6 +106,10 @@ model LeaveBalance {
   mlEntitlement Int   @default(14) // Copied from Staff at year start
   mlUsed        Float @default(0)
 
+  // Maternity Leave
+  matEntitlement Int   @default(98) // 98 days maternity leave
+  matUsed        Float @default(0)
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,7 +126,7 @@ model LeaveHistory {
   id        String   @id @default(cuid())
   staffId   String
   date      DateTime // The leave date
-  leaveType String // "AL" | "RL" | "EL" | "ML"
+  leaveType String // "AL" | "RL" | "EL" | "ML" | "MAT"
   status    String   @default("approved") // "approved" | "pending" | "cancelled"
   notes     String?
 
@@ -163,7 +169,7 @@ model ScheduleDraft {
   // Override data (same structure as ScheduleOverride)
   shiftType String? // e.g., "11h", "9h_early", null for off
   isLeave   Boolean @default(false)
-  leaveType String? // "AL" | "RL" | "EL" | "ML" | null
+  leaveType String? // "AL" | "RL" | "EL" | "ML" | "MAT" | null
 
   // Metadata
   createdAt DateTime @default(now())
@@ -186,4 +192,25 @@ model DraftMonth {
   updatedAt DateTime @updatedAt
 
   @@unique([year, month])
+}
+
+// ============================================
+// MATERNITY LEAVE PERIODS
+// ============================================
+
+model MaternityLeavePeriod {
+  id        String   @id @default(cuid())
+  staffId   String
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("active") // "active" | "cancelled"
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  staff Staff @relation(fields: [staffId], references: [staffId])
+
+  @@unique([staffId, startDate])
+  @@index([staffId])
 }

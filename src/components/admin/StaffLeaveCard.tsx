@@ -13,6 +13,11 @@ interface LeaveHistoryEntry {
   leaveType: string;
 }
 
+interface MaternityPeriod {
+  startDate: string;
+  endDate: string;
+}
+
 interface StaffLeaveCardProps {
   staffId: string;
   staffName: string;
@@ -20,6 +25,7 @@ interface StaffLeaveCardProps {
   al: { entitlement: number; used: number; remaining: number };
   rl: { earned: number; used: number; remaining: number };
   ml: { entitlement: number; used: number; remaining: number };
+  mat?: { entitlement: number; used: number; remaining: number; activePeriod?: MaternityPeriod };
   history: LeaveHistoryEntry[];
 }
 
@@ -45,6 +51,8 @@ function getLeaveTypeLabel(type: string) {
       return 'Emergency';
     case 'ML':
       return 'Medical';
+    case 'MAT':
+      return 'Maternity';
     default:
       return type;
   }
@@ -57,6 +65,7 @@ export default function StaffLeaveCard({
   al,
   rl,
   ml,
+  mat,
   history,
 }: StaffLeaveCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -64,6 +73,7 @@ export default function StaffLeaveCard({
   const alPercentUsed = al.entitlement > 0 ? (al.used / al.entitlement) * 100 : 0;
   const rlPercentUsed = rl.earned > 0 ? (rl.used / rl.earned) * 100 : 0;
   const mlPercentUsed = ml.entitlement > 0 ? (ml.used / ml.entitlement) * 100 : 0;
+  const matPercentUsed = mat && mat.entitlement > 0 ? (mat.used / mat.entitlement) * 100 : 0;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -144,6 +154,38 @@ export default function StaffLeaveCard({
             <span>{ml.entitlement} total</span>
           </div>
         </div>
+
+        {/* Maternity Leave - only show if there's an active period or days used */}
+        {mat && (mat.activePeriod || mat.used > 0) && (
+          <div className="mb-5 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-blue-700 font-medium">Maternity Leave</span>
+              {mat.activePeriod ? (
+                <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                  Active
+                </span>
+              ) : null}
+            </div>
+            {mat.activePeriod ? (
+              <div className="text-sm text-blue-600">
+                {format(parseISO(mat.activePeriod.startDate), 'd MMM yyyy')} - {format(parseISO(mat.activePeriod.endDate), 'd MMM yyyy')}
+              </div>
+            ) : (
+              <>
+                <div className="w-full bg-blue-100 rounded-full h-1.5">
+                  <div
+                    className="h-1.5 rounded-full bg-blue-400 transition-all duration-300"
+                    style={{ width: `${Math.min(matPercentUsed, 100)}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-blue-400 mt-1.5">
+                  <span>{Math.floor(mat.used)} used</span>
+                  <span>{mat.entitlement} total</span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* View History Button */}
         <button

@@ -35,8 +35,8 @@ NEXT_PUBLIC_ADMIN_PASSWORD=<password>       # Admin login password
 ## Architecture
 
 ### Tech Stack
-- **Framework:** Next.js 15.5+ (App Router, Turbopack)
-- **Database:** Prisma ORM with SQLite (`prisma/pharmacy.db`)
+- **Framework:** Next.js 15.5.9 (App Router, Turbopack)
+- **Database:** Prisma 6.19.1 with SQLite (`prisma/prisma/pharmacy.db`)
 - **UI:** React 19, TypeScript, Tailwind CSS v4
 - **PDF Generation:** Puppeteer (server-side)
 - **Date Utilities:** date-fns
@@ -54,7 +54,10 @@ NEXT_PUBLIC_ADMIN_PASSWORD=<password>       # Admin login password
 - `LeaveHistory` - Individual leave entries with dates and types
 - `PublicHoliday` - Holiday dates for RL calculation
 
-**Leave Types:** `AL` (Annual), `RL` (Replacement), `EL` (Emergency), `ML` (Medical)
+**Leave Types:** `AL` (Annual), `RL` (Replacement), `EL` (Emergency), `ML` (Medical), `MAT` (Maternity)
+
+**Maternity Leave Model:**
+- `MaternityLeavePeriod` - Tracks active maternity leave periods (staffId, startDate, endDate, status)
 
 ### Core System: Schedule Generation
 
@@ -99,6 +102,7 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 | `GET /api/leave/balances` | Leave balances by year |
 | `GET /api/leave/history` | Leave history entries |
 | `POST /api/leave/calculate-rl` | Recalculate replacement leave |
+| `GET/POST /api/leave/maternity` | Get active maternity periods / Create 98-day maternity leave |
 | `POST /api/migrate` | Seed database with initial data |
 | `POST /api/generate-pdf` | Server-side PDF generation |
 
@@ -150,6 +154,26 @@ Schedule changes follow a draft-first pattern:
 - **Publishing:** Admin publishes drafts → copies to `ScheduleOverride`, updates leave balances
 - **Discarding:** Admin can discard drafts → deletes from `ScheduleDraft`, clears `DraftMonth`
 - **View modes:** Public users see only published (`ScheduleOverride`), admins see drafts if they exist
+
+### Maternity Leave (98 Days)
+
+Maternity leave is a special leave type that creates 98 consecutive days of leave in one action:
+
+**User Flow:**
+1. Admin selects "Maternity Leave (98 days)..." from dropdown (desktop) or bottom sheet (mobile)
+2. `MaternityLeaveModal` opens with date picker and shows calculated end date (start + 97 days)
+3. On confirm, `POST /api/leave/maternity` creates:
+   - `MaternityLeavePeriod` record to track the active period
+   - 98 `ScheduleDraft` entries (one per day with `leaveType: 'MAT'`)
+   - `DraftMonth` records for all affected months
+4. Calendar refreshes to show MAT leave in draft mode
+5. Admin publishes each affected month when ready
+
+**Key Files:**
+- `src/components/MaternityLeaveModal.tsx` - Modal UI for selecting start date
+- `src/app/api/leave/maternity/route.ts` - Batch creates 98 draft entries
+
+**Display:** MAT leave displays with orange text like other leave types in calendar view.
 
 ### Offline Sync Strategy
 
