@@ -100,7 +100,7 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 | `GET/POST /api/staff` | List/create staff members |
 | `PUT/DELETE /api/staff/[staffId]` | Update/deactivate staff |
 | `GET /api/leave/balances` | Leave balances by year |
-| `GET /api/leave/history` | Leave history entries |
+| `GET/DELETE /api/leave/history` | Leave history entries (GET with staffId param, DELETE by id) |
 | `POST /api/leave/calculate-rl` | Recalculate replacement leave |
 | `GET/POST /api/leave/maternity` | Get active maternity periods / Create 98-day maternity leave |
 | `POST /api/migrate` | Seed database with initial data |
@@ -136,17 +136,21 @@ Main UI (~1400 lines), accepts `mode` prop:
 
 2. **Prisma Client Location:** Generated to `src/generated/prisma/` per schema config. Import from `@/generated/prisma`.
 
-3. **Offline Support:** `useScheduleOverridesDB` caches to localStorage and queues changes when offline. Cache keys: `pharmacy-cache-YYYY-MM` (read cache), `pharmacy-pending-YYYY-MM` (pending changes).
+3. **Day-of-Week Numbering:** Uses JavaScript convention where 0=Sunday, 1=Monday, ..., 6=Saturday. The `defaultOffDays` field in Staff stores this as JSON array string (e.g., `"[0,6]"` for Sunday/Saturday off).
 
-4. **Staff Colors:** `STAFF_COLORS` (card styling) and `AVATAR_COLORS` (mobile avatars) in `staff-data.ts`, keyed by staffId.
+4. **Offline Support:** `useScheduleOverridesDB` caches to localStorage and queues changes when offline. Cache keys: `pharmacy-cache-YYYY-MM` (read cache), `pharmacy-pending-YYYY-MM` (pending changes).
 
-5. **Public Holidays:** Stored in database, used for RL calculation. On holidays, all staff marked as off.
+5. **Staff Colors:** `STAFF_COLORS` (card styling) and `AVATAR_COLORS` (mobile avatars) in `staff-data.ts`, keyed by staffId.
 
-6. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
+6. **Public Holidays:** Stored in database, used for RL calculation. On holidays, all staff marked as off.
 
-7. **Authentication:** Cookie-based auth via `useAuth` hook. Login sets `pharmacy-admin-auth` cookie (24h expiry) for middleware protection. Password stored in `NEXT_PUBLIC_ADMIN_PASSWORD` env var.
+7. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
 
-8. **StaffCard Edit Mode Colors:** In `StaffCard` (~line 988), card colors use `editValue` prop when in edit mode (not `staffShift` data) so colors update immediately on dropdown change.
+8. **Authentication:** Cookie-based auth via `useAuth` hook. Login sets `pharmacy-admin-auth` cookie (24h expiry) for middleware protection. Password stored in `NEXT_PUBLIC_ADMIN_PASSWORD` env var.
+
+9. **StaffCard Edit Mode Colors:** In `StaffCard`, card colors use `editValue` prop when in edit mode (not `staffShift` data) so colors update immediately on dropdown change.
+
+10. **Copy/Paste Week Shifts:** In edit mode, Sundays show a kebab menu (⋮) to copy/paste entire week shifts. Copies by day-of-week mapping (Mon→Mon, Tue→Tue). State: `copiedWeek` stores `{weekNumber, data: Record<dayOfWeek_staffId, shiftKey>}`. Clipboard badge shows in toolbar when active.
 
 ### Draft/Publish Workflow
 
@@ -210,3 +214,7 @@ Tailwind CSS v4's `oklch()` colors are incompatible with html2canvas. Solution: 
 - **Desktop:** Side tabs in AdminPanel, full calendar grid with staff cards
 
 Admin logout button visibility is controlled via mobile-specific styling in `Calendar.tsx`.
+
+## Testing
+
+No test framework is currently configured. `npm run lint` runs ESLint as the only automated check.
