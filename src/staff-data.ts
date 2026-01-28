@@ -9,25 +9,25 @@ import type { StaffMember, ShiftDefinition, ShiftPattern } from "@/types/schedul
 // Index 4+: Colors for new staff members
 export const STAFF_COLOR_PALETTE = [
   // Index 0: Blue (fatimah)
-  { card: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-400' }, avatar: { bg: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' }, bar: 'bg-blue-500' },
+  { card: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-400' }, avatar: { bg: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' }, bar: 'bg-blue-500', hex: '#3b82f6' },
   // Index 1: Green (siti)
-  { card: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-400' }, avatar: { bg: 'bg-green-500', badge: 'bg-green-100 text-green-700' }, bar: 'bg-green-500' },
+  { card: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-400' }, avatar: { bg: 'bg-green-500', badge: 'bg-green-100 text-green-700' }, bar: 'bg-green-500', hex: '#22c55e' },
   // Index 2: Purple (pah)
-  { card: { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-400' }, avatar: { bg: 'bg-purple-500', badge: 'bg-purple-100 text-purple-700' }, bar: 'bg-purple-500' },
+  { card: { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-400' }, avatar: { bg: 'bg-purple-500', badge: 'bg-purple-100 text-purple-700' }, bar: 'bg-purple-500', hex: '#a855f7' },
   // Index 3: Pink (amal)
-  { card: { bg: 'bg-pink-50', text: 'text-pink-800', border: 'border-pink-400' }, avatar: { bg: 'bg-pink-500', badge: 'bg-pink-100 text-pink-700' }, bar: 'bg-pink-500' },
+  { card: { bg: 'bg-pink-50', text: 'text-pink-800', border: 'border-pink-400' }, avatar: { bg: 'bg-pink-500', badge: 'bg-pink-100 text-pink-700' }, bar: 'bg-pink-500', hex: '#ec4899' },
   // Index 4: Orange (new staff)
-  { card: { bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-400' }, avatar: { bg: 'bg-orange-500', badge: 'bg-orange-100 text-orange-700' }, bar: 'bg-orange-500' },
+  { card: { bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-400' }, avatar: { bg: 'bg-orange-500', badge: 'bg-orange-100 text-orange-700' }, bar: 'bg-orange-500', hex: '#f97316' },
   // Index 5: Teal (new staff)
-  { card: { bg: 'bg-teal-50', text: 'text-teal-800', border: 'border-teal-400' }, avatar: { bg: 'bg-teal-500', badge: 'bg-teal-100 text-teal-700' }, bar: 'bg-teal-500' },
+  { card: { bg: 'bg-teal-50', text: 'text-teal-800', border: 'border-teal-400' }, avatar: { bg: 'bg-teal-500', badge: 'bg-teal-100 text-teal-700' }, bar: 'bg-teal-500', hex: '#14b8a6' },
   // Index 6: Indigo (new staff)
-  { card: { bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-400' }, avatar: { bg: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700' }, bar: 'bg-indigo-500' },
+  { card: { bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-400' }, avatar: { bg: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700' }, bar: 'bg-indigo-500', hex: '#6366f1' },
   // Index 7: Rose (new staff)
-  { card: { bg: 'bg-rose-50', text: 'text-rose-800', border: 'border-rose-400' }, avatar: { bg: 'bg-rose-500', badge: 'bg-rose-100 text-rose-700' }, bar: 'bg-rose-500' },
+  { card: { bg: 'bg-rose-50', text: 'text-rose-800', border: 'border-rose-400' }, avatar: { bg: 'bg-rose-500', badge: 'bg-rose-100 text-rose-700' }, bar: 'bg-rose-500', hex: '#f43f5e' },
   // Index 8: Amber (new staff)
-  { card: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-400' }, avatar: { bg: 'bg-amber-500', badge: 'bg-amber-100 text-amber-700' }, bar: 'bg-amber-500' },
+  { card: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-400' }, avatar: { bg: 'bg-amber-500', badge: 'bg-amber-100 text-amber-700' }, bar: 'bg-amber-500', hex: '#f59e0b' },
   // Index 9: Cyan (new staff)
-  { card: { bg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-400' }, avatar: { bg: 'bg-cyan-500', badge: 'bg-cyan-100 text-cyan-700' }, bar: 'bg-cyan-500' },
+  { card: { bg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-400' }, avatar: { bg: 'bg-cyan-500', badge: 'bg-cyan-100 text-cyan-700' }, bar: 'bg-cyan-500', hex: '#06b6d4' },
 ];
 
 // Mapping of legacy staff IDs to their fixed color indices
