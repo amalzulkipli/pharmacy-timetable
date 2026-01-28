@@ -2,23 +2,8 @@
 
 import { useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { STAFF_MEMBERS } from '@/staff-data';
+import { getStaffColors } from '@/staff-data';
 import type { WeeklyHourSummary } from '@/types/schedule';
-
-// Color maps for dots and progress bars
-const DOT_COLORS: Record<string, string> = {
-  fatimah: 'bg-blue-500',
-  siti: 'bg-green-500',
-  pah: 'bg-purple-500',
-  amal: 'bg-pink-500',
-};
-
-const BAR_COLORS: Record<string, string> = {
-  fatimah: 'bg-blue-500',
-  siti: 'bg-green-500',
-  pah: 'bg-purple-500',
-  amal: 'bg-pink-500',
-};
 
 interface StaffRowData {
   staffId: string;
@@ -54,8 +39,23 @@ export default function StaffHoursOverview({ weeklyHourSummaries, monthlyHourTot
       .forEach(s => weekSet.add(s.week));
     const weekNumbers = Array.from(weekSet).sort((a, b) => a - b);
 
-    // Build staff rows
-    const staffRows: StaffRowData[] = STAFF_MEMBERS.map(staff => {
+    // Extract unique staff from summaries (dynamic - includes new staff like Rina)
+    const staffMap = new Map<string, { id: string; name: string; weeklyHours: number }>();
+    weeklyHourSummaries
+      .filter(s => !s.staffId.startsWith('temp-'))
+      .forEach(s => {
+        if (!staffMap.has(s.staffId)) {
+          staffMap.set(s.staffId, {
+            id: s.staffId,
+            name: s.staffName,
+            weeklyHours: s.targetHours,
+          });
+        }
+      });
+    const uniqueStaff = Array.from(staffMap.values());
+
+    // Build staff rows from dynamic staff list
+    const staffRows: StaffRowData[] = uniqueStaff.map(staff => {
       const monthlyData = monthlyHourTotals[staff.id] || { totalActual: 0, totalTarget: 0, isUnderTarget: false };
       const percentage = monthlyData.totalTarget > 0
         ? Math.round((monthlyData.totalActual / monthlyData.totalTarget) * 100)
@@ -148,7 +148,7 @@ export default function StaffHoursOverview({ weeklyHourSummaries, monthlyHourTot
             >
               {/* Staff Name Cell */}
               <div className="flex items-center gap-2">
-                <span className={`w-3 h-3 rounded-full ${DOT_COLORS[staff.staffId] || 'bg-gray-400'}`} />
+                <span className={`w-3 h-3 rounded-full ${getStaffColors(staff.staffId).bar}`} />
                 <span className="font-medium text-gray-900">{staff.staffName}</span>
               </div>
 
@@ -165,7 +165,7 @@ export default function StaffHoursOverview({ weeklyHourSummaries, monthlyHourTot
                 {/* Progress Bar */}
                 <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all ${BAR_COLORS[staff.staffId] || 'bg-gray-400'}`}
+                    className={`h-full rounded-full transition-all ${getStaffColors(staff.staffId).bar}`}
                     style={{ width: `${Math.min(staff.monthly.percentage, 100)}%` }}
                   />
                 </div>

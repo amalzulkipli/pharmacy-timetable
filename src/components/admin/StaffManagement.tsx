@@ -11,6 +11,8 @@ interface Staff {
   weeklyHours: number;
   alEntitlement: number;
   mlEntitlement: number;
+  startDate?: string | null;
+  colorIndex?: number | null;
   isActive: boolean;
 }
 
@@ -99,6 +101,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
     weeklyHours: 45,
     alEntitlement: 14,
     mlEntitlement: 14,
+    startDate: '',  // Empty string = no start date restriction
   });
 
   // Fetch staff list
@@ -129,6 +132,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
       weeklyHours: s.weeklyHours,
       alEntitlement: s.alEntitlement,
       mlEntitlement: s.mlEntitlement,
+      startDate: s.startDate ? s.startDate.split('T')[0] : '',  // Format as YYYY-MM-DD
     });
   };
 
@@ -142,6 +146,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
       weeklyHours: 45,
       alEntitlement: 14,
       mlEntitlement: 14,
+      startDate: '',
     });
   };
 
@@ -304,6 +309,19 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
                   isMobile ? 'px-4 py-3 text-base min-h-[48px]' : 'px-3 py-2 text-sm'
                 }`}
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-2">Start Date (optional)</label>
+              <input
+                type="date"
+                value={formData.startDate}
+                onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
+                className={`w-full border rounded-lg text-gray-900 ${
+                  isMobile ? 'px-4 py-3 text-base min-h-[48px]' : 'px-3 py-2 text-sm'
+                }`}
+                placeholder="Leave empty for no date restriction"
+              />
+              <p className="mt-1 text-xs text-gray-500">Staff will appear in timetable from this date forward</p>
             </div>
           </div>
           <div className={`mt-4 ${isMobile ? 'flex flex-col gap-2' : 'flex justify-end space-x-2'}`}>

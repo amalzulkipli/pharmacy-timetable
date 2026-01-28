@@ -25,6 +25,8 @@ model Staff {
   alEntitlement  Int      @default(14) // Annual leave days per year
   mlEntitlement  Int      @default(14) // Medical leave days per year
   matEntitlement Int      @default(98) // Maternity leave days
+  startDate      DateTime? // Staff appears in timetable from this date forward
+  colorIndex     Int?      // Auto-assigned color index for UI (4+ for new staff)
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

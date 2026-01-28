@@ -26,6 +26,8 @@ export async function GET() {
       defaultOffDays: parseOffDays(s.defaultOffDays),
       alEntitlement: s.alEntitlement,
       mlEntitlement: s.mlEntitlement,
+      startDate: s.startDate?.toISOString() || null,  // Include startDate for timetable filtering
+      colorIndex: s.colorIndex,  // Include colorIndex for UI colors
       isActive: s.isActive,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
@@ -42,7 +44,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { staffId, name, role, weeklyHours, defaultOffDays, alEntitlement, mlEntitlement } = body;
+    const { staffId, name, role, weeklyHours, defaultOffDays, alEntitlement, mlEntitlement, startDate } = body;
 
     // Validate required fields (defaultOffDays is optional, defaults to [0, 6])
     if (!staffId || !name || !role || weeklyHours === undefined) {
@@ -61,6 +63,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Staff ID already exists' }, { status: 409 });
     }
 
+    // Auto-assign colorIndex for new staff (legacy staff have indices 0-3)
+    // New staff get 4, 5, 6, etc. based on count of staff with assigned colorIndex
+    const staffWithColors = await prisma.staff.count({
+      where: { colorIndex: { not: null } },
+    });
+    // New staff start at index 4 (after legacy staff)
+    const newColorIndex = Math.max(4, staffWithColors);
+
     const staff = await prisma.staff.create({
       data: {
         staffId: staffId.toLowerCase().replace(/\s/g, ''),
@@ -70,6 +80,8 @@ export async function POST(request: NextRequest) {
         defaultOffDays: JSON.stringify(defaultOffDays || [0, 6]),
         alEntitlement: alEntitlement || 14,
         mlEntitlement: mlEntitlement || 14,
+        startDate: startDate ? new Date(startDate) : null,
+        colorIndex: newColorIndex,
       },
     });
 
@@ -97,6 +109,8 @@ export async function POST(request: NextRequest) {
         defaultOffDays: parseOffDays(staff.defaultOffDays),
         alEntitlement: staff.alEntitlement,
         mlEntitlement: staff.mlEntitlement,
+        startDate: staff.startDate?.toISOString() || null,
+        colorIndex: staff.colorIndex,
       },
       { status: 201 }
     );

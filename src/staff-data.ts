@@ -1,5 +1,59 @@
 import type { StaffMember, ShiftDefinition, ShiftPattern } from "@/types/schedule"
 
+// ============================================
+// EXTENDED COLOR SYSTEM
+// ============================================
+
+// Extended color palette for dynamic staff assignment
+// Index 0-3: Legacy staff colors (fatimah, siti, pah, amal)
+// Index 4+: Colors for new staff members
+export const STAFF_COLOR_PALETTE = [
+  // Index 0: Blue (fatimah)
+  { card: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-400' }, avatar: { bg: 'bg-blue-500', badge: 'bg-blue-100 text-blue-700' }, bar: 'bg-blue-500' },
+  // Index 1: Green (siti)
+  { card: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-400' }, avatar: { bg: 'bg-green-500', badge: 'bg-green-100 text-green-700' }, bar: 'bg-green-500' },
+  // Index 2: Purple (pah)
+  { card: { bg: 'bg-purple-50', text: 'text-purple-800', border: 'border-purple-400' }, avatar: { bg: 'bg-purple-500', badge: 'bg-purple-100 text-purple-700' }, bar: 'bg-purple-500' },
+  // Index 3: Pink (amal)
+  { card: { bg: 'bg-pink-50', text: 'text-pink-800', border: 'border-pink-400' }, avatar: { bg: 'bg-pink-500', badge: 'bg-pink-100 text-pink-700' }, bar: 'bg-pink-500' },
+  // Index 4: Orange (new staff)
+  { card: { bg: 'bg-orange-50', text: 'text-orange-800', border: 'border-orange-400' }, avatar: { bg: 'bg-orange-500', badge: 'bg-orange-100 text-orange-700' }, bar: 'bg-orange-500' },
+  // Index 5: Teal (new staff)
+  { card: { bg: 'bg-teal-50', text: 'text-teal-800', border: 'border-teal-400' }, avatar: { bg: 'bg-teal-500', badge: 'bg-teal-100 text-teal-700' }, bar: 'bg-teal-500' },
+  // Index 6: Indigo (new staff)
+  { card: { bg: 'bg-indigo-50', text: 'text-indigo-800', border: 'border-indigo-400' }, avatar: { bg: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700' }, bar: 'bg-indigo-500' },
+  // Index 7: Rose (new staff)
+  { card: { bg: 'bg-rose-50', text: 'text-rose-800', border: 'border-rose-400' }, avatar: { bg: 'bg-rose-500', badge: 'bg-rose-100 text-rose-700' }, bar: 'bg-rose-500' },
+  // Index 8: Amber (new staff)
+  { card: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-400' }, avatar: { bg: 'bg-amber-500', badge: 'bg-amber-100 text-amber-700' }, bar: 'bg-amber-500' },
+  // Index 9: Cyan (new staff)
+  { card: { bg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-400' }, avatar: { bg: 'bg-cyan-500', badge: 'bg-cyan-100 text-cyan-700' }, bar: 'bg-cyan-500' },
+];
+
+// Mapping of legacy staff IDs to their fixed color indices
+export const LEGACY_STAFF_COLOR_INDEX: { [staffId: string]: number } = {
+  fatimah: 0,
+  siti: 1,
+  pah: 2,
+  amal: 3,
+};
+
+// Get colors for a staff member (by staffId or colorIndex)
+// Legacy staff (fatimah, siti, pah, amal) use fixed indices 0-3
+// New staff use their assigned colorIndex (4+)
+export function getStaffColors(staffId: string, colorIndex?: number | null) {
+  // Check if it's a legacy staff member first
+  const legacyIndex = LEGACY_STAFF_COLOR_INDEX[staffId];
+  if (legacyIndex !== undefined) {
+    return STAFF_COLOR_PALETTE[legacyIndex];
+  }
+
+  // For new staff, use the assigned colorIndex (default to index 4 if not assigned)
+  const idx = colorIndex ?? 4;
+  return STAFF_COLOR_PALETTE[idx % STAFF_COLOR_PALETTE.length];
+}
+
+// Legacy exports for backward compatibility
 export const STAFF_COLORS: { [key: string]: { bg: string; text: string; border: string } } = {
   fatimah: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-400' },
   siti: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-400' },
@@ -185,3 +239,54 @@ const PATTERN_1: ShiftPattern = {
 }
 
 export const SHIFT_PATTERNS = [PATTERN_0, PATTERN_1]
+
+// ============================================
+// DEFAULT SHIFT PATTERNS FOR NEW STAFF
+// ============================================
+
+// Default patterns by role for staff not in SHIFT_PATTERNS
+// These provide sensible defaults that can be overridden
+export const DEFAULT_SHIFT_PATTERNS: { [role: string]: { [patternId: number]: { [dayOfWeek: number]: ShiftDefinition | null } } } = {
+  // Pharmacist default: Mon-Fri working, Sat-Sun off
+  "Pharmacist": {
+    0: { // Pattern 0 (Odd ISO weeks)
+      1: SHIFT_DEFINITIONS["11h"],       // Monday: 11h
+      2: SHIFT_DEFINITIONS["11h"],       // Tuesday: 11h
+      3: SHIFT_DEFINITIONS["8h_early"],  // Wednesday: 8h early
+      4: SHIFT_DEFINITIONS["8h_early"],  // Thursday: 8h early
+      5: SHIFT_DEFINITIONS["7h_early"],  // Friday: 7h early
+      6: null,                           // Saturday: off
+      0: null,                           // Sunday: off
+    },
+    1: { // Pattern 1 (Even ISO weeks)
+      1: SHIFT_DEFINITIONS["11h"],       // Monday: 11h
+      2: SHIFT_DEFINITIONS["11h"],       // Tuesday: 11h
+      3: SHIFT_DEFINITIONS["8h_early"],  // Wednesday: 8h early
+      4: SHIFT_DEFINITIONS["8h_early"],  // Thursday: 8h early
+      5: SHIFT_DEFINITIONS["7h_late"],   // Friday: 7h late
+      6: null,                           // Saturday: off
+      0: null,                           // Sunday: off
+    },
+  },
+  // Assistant Pharmacist default: Mon-Tue off, Wed-Sun working
+  "Assistant Pharmacist": {
+    0: { // Pattern 0 (Odd ISO weeks)
+      1: null,                           // Monday: off
+      2: null,                           // Tuesday: off
+      3: SHIFT_DEFINITIONS["11h"],       // Wednesday: 11h
+      4: SHIFT_DEFINITIONS["9h_early"],  // Thursday: 9h early
+      5: SHIFT_DEFINITIONS["9h_early"],  // Friday: 9h early
+      6: SHIFT_DEFINITIONS["9h_early"],  // Saturday: 9h early
+      0: SHIFT_DEFINITIONS["7h_late"],   // Sunday: 7h late
+    },
+    1: { // Pattern 1 (Even ISO weeks)
+      1: null,                           // Monday: off
+      2: null,                           // Tuesday: off
+      3: SHIFT_DEFINITIONS["9h_late"],   // Wednesday: 9h late
+      4: SHIFT_DEFINITIONS["9h_late"],   // Thursday: 9h late
+      5: SHIFT_DEFINITIONS["9h_late"],   // Friday: 9h late
+      6: SHIFT_DEFINITIONS["9h_late"],   // Saturday: 9h late
+      0: SHIFT_DEFINITIONS["9h_early"],  // Sunday: 9h early
+    },
+  },
+};

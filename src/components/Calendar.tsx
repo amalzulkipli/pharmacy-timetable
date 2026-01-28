@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
-import { STAFF_MEMBERS, SHIFT_DEFINITIONS, STAFF_COLORS, AVATAR_COLORS } from '../staff-data';
+import { STAFF_MEMBERS, SHIFT_DEFINITIONS, getStaffColors } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
+import { useStaffMembers, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, Clock, Calendar as CalendarIcon, Printer, Check, Trash2, Menu, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -47,13 +48,7 @@ function calculateBarWidth(startTime: string, endTime: string): number {
   return Math.max(0, ((endMinutes - startMinutes) / TIMELINE_DURATION) * 100);
 }
 
-// Solid bar colors for timeline (more vibrant than card backgrounds)
-const BAR_COLORS: { [key: string]: string } = {
-  fatimah: 'bg-blue-500',    // Blue bar (matches card theme)
-  siti: 'bg-green-500',      // Green bar
-  pah: 'bg-purple-500',      // Purple bar
-  amal: 'bg-pink-500',       // Pink bar
-};
+// Note: Bar colors are now dynamically retrieved via getStaffColors(staffId, colorIndex).bar
 
 // ================================================================================================
 // Main Calendar Component
@@ -130,6 +125,9 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     month: nextMonth,
     view: mode === 'admin' ? 'admin' : 'public',
   });
+
+  // Fetch staff from database (with legacy staff fallback)
+  const { staff: dynamicStaff, isLoading: isLoadingStaff } = useStaffMembers();
 
   // Local state for manual overrides (synced from DB)
   const [manualOverrides, setManualOverrides] = useState<Record<string, OverrideData>>({});
@@ -287,10 +285,10 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       return { ...baseSchedule, days: updatedDays };
     };
 
-    const baseSchedule = generateMonthSchedule(selectedMonth, selectedYear);
+    const baseSchedule = generateMonthSchedule(selectedMonth, selectedYear, dynamicStaff);
     const updatedSchedule = applyOverrides(baseSchedule, manualOverrides);
     setSchedule(updatedSchedule);
-  }, [selectedMonth, selectedYear, manualOverrides]);
+  }, [selectedMonth, selectedYear, manualOverrides, dynamicStaff]);
 
   // Safety: Exit edit mode if user loses admin privileges
   useEffect(() => {
@@ -305,8 +303,11 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     schedule.days.forEach(day => {
       const dayKey = format(day.date, 'yyyy-MM-dd');
       buffer[dayKey] = {};
-      STAFF_MEMBERS.forEach(staff => {
-        const { shift, isLeave, leaveType } = day.staffShifts[staff.id];
+      // Iterate over all staff in the day's staffShifts (includes dynamic staff)
+      Object.keys(day.staffShifts).forEach(staffId => {
+        const staffShift = day.staffShifts[staffId];
+        if (!staffShift) return;
+        const { shift, isLeave, leaveType } = staffShift;
         let key = 'off';
         if (isLeave) {
           key = `leave_${leaveType?.toLowerCase()}`;
@@ -315,12 +316,12 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           // Compare shift properties to find matching SHIFT_DEFINITIONS key
           key = Object.keys(SHIFT_DEFINITIONS).find(k => {
             const def = SHIFT_DEFINITIONS[k];
-            return def.startTime === shift.startTime && 
-                   def.endTime === shift.endTime && 
+            return def.startTime === shift.startTime &&
+                   def.endTime === shift.endTime &&
                    def.workHours === shift.workHours;
           }) || 'off';
         }
-        buffer[dayKey][staff.id] = key;
+        buffer[dayKey][staffId] = key;
       });
     });
     setEditBuffer(buffer);
@@ -445,7 +446,8 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
         if (getISOWeek(date) === targetWeekNumber) {
           const dayOfWeek = date.getDay();
 
-          STAFF_MEMBERS.forEach(staff => {
+          // Use dynamicStaff for paste operation
+          dynamicStaff.forEach(staff => {
             const key = `${dayOfWeek}_${staff.id}`;
             if (copiedWeek.data[key]) {
               newBuffer[dateKey] = {
@@ -673,8 +675,8 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   
 
   // --- Memoized Calculations for Performance ---
-  const weeklyHourSummaries = useMemo(() => schedule ? getWeeklyHourSummaries(schedule) : [], [schedule]);
-  const monthlyHourTotals = useMemo(() => schedule ? getMonthlyHourTotals(schedule) : {}, [schedule]);
+  const weeklyHourSummaries = useMemo(() => schedule ? getWeeklyHourSummaries(schedule, dynamicStaff) : [], [schedule, dynamicStaff]);
+  const monthlyHourTotals = useMemo(() => schedule ? getMonthlyHourTotals(schedule, dynamicStaff) : {}, [schedule, dynamicStaff]);
 
   // Mobile: Get current week number for display
   const currentWeekNumber = useMemo(() => {
@@ -721,7 +723,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     }
   };
 
-  if (!schedule || isLoadingOverrides) return <div className="p-8 text-center">Loading Schedule...</div>;
+  if (!schedule || isLoadingOverrides || isLoadingStaff) return <div className="p-8 text-center">Loading Schedule...</div>;
 
   // Mobile: Render single-day view
   if (isMobile) {
@@ -729,6 +731,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       <>
         <MobileView
           schedule={schedule}
+          staffMembers={dynamicStaff}
           selectedDayIndex={selectedDayIndex}
           setSelectedDayIndex={setSelectedDayIndex}
           currentWeekNumber={currentWeekNumber}
@@ -818,6 +821,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
               <CalendarDay
                 key={format(day.date, 'yyyy-MM-dd')}
                 day={day}
+                staffMembers={dynamicStaff}
                 isEditMode={isEditMode}
                 editBuffer={editBuffer}
                 onEditBufferChange={handleEditBufferChange}
@@ -1055,8 +1059,9 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   );
 }
 
-function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, onWeekMenuClick }: {
+function CalendarDay({ day, staffMembers, isEditMode, editBuffer, onEditBufferChange, onWeekMenuClick }: {
   day: DaySchedule,
+  staffMembers: DatabaseStaffMember[],
   isEditMode: boolean,
   editBuffer: Record<string, Record<string, string>>,
   onEditBufferChange: (dayKey: string, staffId: string, value: string) => void,
@@ -1067,6 +1072,9 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, onWeekMe
   const isToday = format(day.date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
   const isSunday = day.date.getDay() === 0; // 0 = Sunday
   const weekNumber = getISOWeek(day.date);
+
+  // Filter staff members who have shifts on this day (are active on this date)
+  const activeStaff = staffMembers.filter(staff => day.staffShifts[staff.id] !== undefined);
 
   return (
     <div className={`border-t border-l border-gray-100 p-2 md:p-3 min-h-[160px] md:min-h-[200px] ${day.isHoliday ? 'bg-red-50' : day.isCurrentMonth ? 'bg-white' : 'bg-gray-50/50'}`}>
@@ -1098,7 +1106,7 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, onWeekMe
         </div>
       </div>
       <div className="space-y-1 md:space-y-2">
-        {STAFF_MEMBERS.map(staff => (
+        {activeStaff.map(staff => (
           <StaffCard
             key={staff.id}
             staff={staff}
@@ -1116,9 +1124,11 @@ function CalendarDay({ day, isEditMode, editBuffer, onEditBufferChange, onWeekMe
   );
 }
 
-function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff: StaffMember, day: DaySchedule, isEditMode: boolean, editValue: string, onEditChange: (value: string) => void }) {
+function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff: DatabaseStaffMember, day: DaySchedule, isEditMode: boolean, editValue: string, onEditChange: (value: string) => void }) {
   const staffShift = day.staffShifts[staff.id];
-  const colorTheme = STAFF_COLORS[staff.id];
+  // Use getStaffColors for dynamic color lookup (works for both legacy and new staff)
+  const staffColors = getStaffColors(staff.id, staff.colorIndex);
+  const colorTheme = staffColors.card;
 
   // Determine if "off" based on edit mode state
   let isOff: boolean;
@@ -1140,15 +1150,17 @@ function StaffCard({ staff, day, isEditMode, editValue, onEditChange }: { staff:
       {isEditMode ? (
         <ShiftDropdown value={editValue} onChange={onEditChange} />
       ) : (
-        <ShiftDisplay staffShift={staffShift} staffId={staff.id} />
+        <ShiftDisplay staffShift={staffShift} staffId={staff.id} colorIndex={staff.colorIndex} />
       )}
     </div>
   );
 }
 
-function ShiftDisplay({ staffShift, staffId }: { staffShift: DaySchedule['staffShifts'][string], staffId: string }) {
+function ShiftDisplay({ staffShift, staffId, colorIndex }: { staffShift: DaySchedule['staffShifts'][string], staffId: string, colorIndex?: number | null }) {
   const { shift } = staffShift;
-  const barColor = BAR_COLORS[staffId] || 'bg-gray-500';
+  // Use getStaffColors for dynamic bar color lookup
+  const staffColors = getStaffColors(staffId, colorIndex);
+  const barColor = staffColors.bar;
 
   // Leave state
   if (staffShift.isLeave) {
@@ -1381,6 +1393,7 @@ function getShiftLabel(shift: ShiftDefinition | null): string {
 
 interface MobileViewProps {
   schedule: MonthSchedule;
+  staffMembers: DatabaseStaffMember[];
   selectedDayIndex: number;
   setSelectedDayIndex: (index: number) => void;
   currentWeekNumber: number;
@@ -1412,6 +1425,7 @@ interface MobileViewProps {
 
 function MobileView({
   schedule,
+  staffMembers,
   selectedDayIndex,
   setSelectedDayIndex,
   currentWeekNumber,
@@ -1444,7 +1458,7 @@ function MobileView({
   // Drawer and bottom sheet state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedStaffForEdit, setSelectedStaffForEdit] = useState<{
-    staff: StaffMember;
+    staff: DatabaseStaffMember;
     dayKey: string;
   } | null>(null);
 
@@ -1553,7 +1567,8 @@ function MobileView({
 
       {/* Staff Cards */}
       <div className="px-4 space-y-3 mt-3">
-        {STAFF_MEMBERS.map(staff => (
+        {/* Filter to only show staff who have shifts on this day (are active) */}
+        {staffMembers.filter(staff => selectedDay.staffShifts[staff.id] !== undefined).map(staff => (
           <MobileStaffCard
             key={staff.id}
             staff={staff}
@@ -1766,7 +1781,7 @@ function MobileDayHeader({ day, weekNumber }: { day: DaySchedule; weekNumber: nu
 }
 
 interface MobileStaffCardProps {
-  staff: StaffMember;
+  staff: DatabaseStaffMember;
   staffShift: DaySchedule['staffShifts'][string];
   isEditMode?: boolean;
   editValue?: string;
@@ -1774,7 +1789,9 @@ interface MobileStaffCardProps {
 }
 
 function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onTap }: MobileStaffCardProps) {
-  const avatarColors = AVATAR_COLORS[staff.id];
+  // Use getStaffColors for dynamic color lookup (works for both legacy and new staff)
+  const staffColors = getStaffColors(staff.id, staff.colorIndex);
+  const avatarColors = staffColors.avatar;
   const initials = staff.name.substring(0, 2).toUpperCase();
 
   // Determine display state based on editValue if in edit mode
@@ -1825,6 +1842,7 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
   }
 
   const avatarBg = isNotWorking ? 'bg-gray-300' : avatarColors.bg;
+  const barColor = staffColors.bar;
 
   const handleClick = () => {
     if (isEditMode && onTap) {
@@ -1863,7 +1881,7 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
         <>
           <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full ${BAR_COLORS[staff.id]}`}
+              className={`h-full rounded-full ${barColor}`}
               style={{
                 marginLeft: `${calculateBarStart(displayShift.startTime)}%`,
                 width: `${calculateBarWidth(displayShift.startTime, displayShift.endTime)}%`
