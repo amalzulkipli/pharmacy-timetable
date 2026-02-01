@@ -1,20 +1,22 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, getStaffColors } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { useStaffMembers, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, LogIn, Clock, Calendar as CalendarIcon, Printer, Check, Trash2, Menu, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Calendar as CalendarIcon, Printer, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import LoginModal from './LoginModal';
 import StaffHoursOverview from './admin/StaffHoursOverview';
+import AppHeader from './AppHeader';
 import MobileDrawerMenu, { type Tab } from './mobile/MobileDrawerMenu';
 import ShiftPickerBottomSheet from './mobile/ShiftPickerBottomSheet';
-import FloatingActionButton from './mobile/FloatingActionButton';
+import MobileBottomBar from './mobile/MobileBottomBar';
 import MaternityLeaveModal from './MaternityLeaveModal';
+import CalendarSkeleton from './CalendarSkeleton';
 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -144,7 +146,8 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
 
   // --- Mobile View State ---
-  const [isMobile, setIsMobile] = useState(false);
+  // Initialize to null to avoid desktop→mobile flash; skeleton shows until detected
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [selectedDayIndex, setSelectedDayIndex] = useState(0); // Index within the current month's schedule
   const [pendingPosition, setPendingPosition] = useState<'start' | 'end' | null>(null);
   const [pendingDateToSelect, setPendingDateToSelect] = useState<Date | null>(null);
@@ -723,7 +726,10 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     }
   };
 
-  if (!schedule || isLoadingOverrides || isLoadingStaff) return <div className="p-8 text-center">Loading Schedule...</div>;
+  // Show skeleton while loading data OR while mobile detection is pending
+  if (!schedule || isLoadingOverrides || isLoadingStaff || isMobile === null) {
+    return <CalendarSkeleton />;
+  }
 
   // Mobile: Render single-day view
   if (isMobile) {
@@ -786,14 +792,22 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 
   // Desktop: Render full calendar grid
   return (
-    <div className="min-h-screen bg-gray-100 p-4 font-sans">
-      <div className="max-w-screen-2xl mx-auto">
-        <Header
+    <div className="min-h-screen bg-gray-100 font-sans">
+      {/* AppHeader: Brand bar with Login (public) - hidden when embedded in AdminPanel */}
+      {!hideTitle && (
+        <AppHeader
+          mode={mode}
+          isOnline={isOnline}
+          onLoginClick={() => setLoginModalOpen(true)}
+        />
+      )}
+
+      <div className="max-w-screen-2xl mx-auto p-4">
+        <CalendarToolbar
           selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth}
           selectedYear={selectedYear} setSelectedYear={setSelectedYear}
           isEditMode={isEditMode}
           isAdmin={isAdmin}
-          isOnline={isOnline}
           hasDraft={hasDraft}
           onEnterEditMode={handleEnterEditMode}
           onSaveChanges={handleSaveChanges}
@@ -805,9 +819,6 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           onPrevMonth={handlePrevMonth}
           onNextMonth={handleNextMonth}
           onToday={handleToday}
-          mode={mode}
-          onLoginClick={() => setLoginModalOpen(true)}
-          hideTitle={hideTitle}
           copiedWeekNumber={copiedWeek?.weekNumber}
           onClearClipboard={() => setCopiedWeek(null)}
         />
@@ -887,14 +898,13 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 // Sub-Components for a Cleaner Structure
 // ================================================================================================
 
-function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, isOnline, hasDraft, onEnterEditMode, onSaveChanges, onCancelEdit, onPublish, onDiscardDraft, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday, mode, onLoginClick, hideTitle = false, copiedWeekNumber, onClearClipboard }: {
+function CalendarToolbar({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, hasDraft, onEnterEditMode, onSaveChanges, onCancelEdit, onPublish, onDiscardDraft, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday, copiedWeekNumber, onClearClipboard }: {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
   setSelectedYear: (year: number) => void;
   isEditMode: boolean;
   isAdmin: boolean;
-  isOnline: boolean;
   hasDraft: boolean;
   onEnterEditMode: () => void;
   onSaveChanges: () => void;
@@ -906,48 +916,14 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onToday: () => void;
-  mode: 'public' | 'admin';
-  onLoginClick: () => void;
-  hideTitle?: boolean;
   copiedWeekNumber?: number | null;
   onClearClipboard?: () => void;
 }) {
   return (
     <div className="mb-4">
-      {/* Row 1: Header bar with logo and login (hidden in admin panel) */}
-      {!hideTitle && (
-        <header className="bg-white border-b border-gray-200 -mx-4 -mt-4 px-4 mb-4">
-          <div className="flex items-center justify-between h-14">
-            {/* Left: Logo/Title */}
-            <div className="flex items-center gap-2">
-              <div className="bg-blue-600 p-1.5 rounded-lg">
-                <CalendarIcon className="h-5 w-5 text-white" />
-              </div>
-              <span className="font-bold text-lg text-gray-900">Alde ST Timetable</span>
-              {!isOnline && (
-                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full ml-2">
-                  Offline
-                </span>
-              )}
-            </div>
-
-            {/* Right: Login button */}
-            {mode === 'public' && !isAdmin && (
-              <button
-                onClick={onLoginClick}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <LogIn className="h-4 w-4" />
-                <span className="hidden sm:inline">Login</span>
-              </button>
-            )}
-          </div>
-        </header>
-      )}
-
-      {/* Row 2: Month/Year and Navigation */}
+      {/* Toolbar: Month/Year pickers | Navigation | Admin buttons */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* Left: Month/Year */}
+        {/* Left: Month/Year pickers */}
         <div className="flex items-center gap-1">
           <div className="relative flex items-center">
             <select
@@ -971,9 +947,9 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
           </div>
         </div>
 
-        {/* Right: Navigation + Login/Admin buttons */}
+        {/* Right: Navigation + Admin buttons */}
         <div className="flex items-center gap-1 md:gap-2">
-          {/* Navigation */}
+          {/* Navigation: < Today > */}
           <div className="inline-flex items-center">
             <button
               onClick={onPrevMonth}
@@ -995,7 +971,7 @@ function Header({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear
             </button>
           </div>
 
-          {/* Admin buttons */}
+          {/* Admin-only buttons */}
           {isAdmin && (
             <>
               <div className="w-px h-4 bg-[#e3e2e0] mx-0.5 md:mx-1 hidden md:block" />
@@ -1539,16 +1515,12 @@ function MobileView({
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans pb-28">
-      {/* Header with hamburger and action buttons */}
+      {/* Header with title and draft badge */}
       <MobileHeader
-        isAdmin={isAdmin}
         mode={mode}
         onLoginClick={onLoginClick}
         isEditMode={isEditMode}
         hasDraft={hasDraft}
-        onMenuOpen={() => setIsDrawerOpen(true)}
-        onCancelEdit={onCancelEdit}
-        onSaveChanges={onSaveChanges}
       />
 
       {/* Controls: Month/Year + Week Nav */}
@@ -1584,32 +1556,33 @@ function MobileView({
         ))}
       </div>
 
-      {/* Floating Action Button - only for admin, hidden when editing */}
-      {isAdminMode && !isEditMode && (
-        <FloatingActionButton
-          hasDraft={hasDraft}
-          onEdit={onEnterEditMode}
-          onDiscard={onDiscardDraft}
-          onPublish={onPublish}
-        />
-      )}
-
-      {/* Bottom Day Selector */}
-      <MobileDaySelector
+      {/* Bottom Bar: Menu + Day Selector + Actions */}
+      <MobileBottomBar
+        state={isEditMode ? 'edit' : hasDraft ? 'draft' : 'view'}
         days={schedule.days}
         selectedIndex={selectedDayIndex}
-        onSelect={handleDateSelect}
+        onSelectDay={handleDateSelect}
         onGoToToday={onGoToToday}
+        onMenuOpen={() => setIsDrawerOpen(true)}
+        onCancelEdit={onCancelEdit}
+        onSaveChanges={onSaveChanges}
+        onEnterEditMode={onEnterEditMode}
+        onPublish={onPublish}
+        isAdmin={isAdminMode}
       />
 
-      {/* Drawer Menu */}
-      <MobileDrawerMenu
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        activeTab="timetable"
-        onTabChange={handleTabChange}
-        onLogout={handleLogout}
-      />
+      {/* Drawer Menu - Admin only */}
+      {isAdminMode && (
+        <MobileDrawerMenu
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          activeTab="timetable"
+          onTabChange={handleTabChange}
+          onLogout={handleLogout}
+          hasDraft={hasDraft}
+          onDiscardDraft={onDiscardDraft}
+        />
+      )}
 
       {/* Shift Picker Bottom Sheet */}
       {selectedStaffForEdit && (
@@ -1627,82 +1600,47 @@ function MobileView({
 }
 
 interface MobileHeaderProps {
-  isAdmin: boolean;
   mode: 'public' | 'admin';
   onLoginClick: () => void;
   isEditMode: boolean;
   hasDraft: boolean;
-  onMenuOpen: () => void;
-  onCancelEdit: () => void;
-  onSaveChanges: () => void;
 }
 
 function MobileHeader({
-  isAdmin,
   mode,
   onLoginClick,
   isEditMode,
   hasDraft,
-  onMenuOpen,
-  onCancelEdit,
-  onSaveChanges,
 }: MobileHeaderProps) {
-  const isAdminMode = mode === 'admin' || isAdmin;
+  const isAdminMode = mode === 'admin';
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
-      {/* Left: Title + Draft badge */}
+      {/* Left: Logo + Title + Draft badge */}
       <div className="flex items-center gap-2">
+        <div className="bg-blue-600 p-1.5 rounded-lg">
+          <CalendarIcon className="h-5 w-5 text-white" />
+        </div>
         <h1 className="text-lg font-bold text-[#37352f]">
           {isEditMode ? 'Editing...' : 'Alde ST Timetable'}
         </h1>
-        {/* Draft badge */}
-        {hasDraft && !isEditMode && (
+        {/* Draft badge - only show in admin mode when has draft and not editing */}
+        {isAdminMode && hasDraft && !isEditMode && (
           <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">
             Draft
           </span>
         )}
       </div>
 
-      {/* Right: Action buttons */}
-      <div className="flex items-center gap-1">
-        {isAdminMode ? (
-          isEditMode ? (
-            // Edit mode: Cancel + Save (no hamburger)
-            <>
-              <button
-                onClick={onCancelEdit}
-                className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={20} />
-              </button>
-              <button
-                onClick={onSaveChanges}
-                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
-              >
-                <Save size={16} />
-                <span>Save</span>
-              </button>
-            </>
-          ) : (
-            // View mode: Hamburger on the right
-            <button
-              onClick={onMenuOpen}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <Menu size={22} />
-            </button>
-          )
-        ) : (
-          // Public mode: Login button only
-          <button
-            onClick={onLoginClick}
-            className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors"
-          >
-            <User size={22} />
-          </button>
-        )}
-      </div>
+      {/* Right: Login button for public mode only */}
+      {!isAdminMode && (
+        <button
+          onClick={onLoginClick}
+          className="p-2 text-[#91918e] hover:bg-[#f1f1ef] rounded-full transition-colors"
+        >
+          <User size={22} />
+        </button>
+      )}
     </div>
   );
 }
@@ -1950,91 +1888,6 @@ function MobileReplacementCard({ replacement }: { replacement: ReplacementShift 
   );
 }
 
-function MobileDaySelector({
-  days,
-  selectedIndex,
-  onSelect,
-  onGoToToday,
-}: {
-  days: DaySchedule[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-  onGoToToday: () => void;
-}) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const selectedButtonRef = useRef<HTMLButtonElement>(null);
-  const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
-
-  // Auto-scroll to selected date
-  useEffect(() => {
-    if (selectedButtonRef.current && scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const button = selectedButtonRef.current;
-      const containerRect = container.getBoundingClientRect();
-      const buttonRect = button.getBoundingClientRect();
-
-      // Calculate if button is out of view
-      const isOutOfView = buttonRect.left < containerRect.left || buttonRect.right > containerRect.right;
-
-      if (isOutOfView) {
-        button.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      }
-    }
-  }, [selectedIndex]);
-
-  return (
-    <div className="fixed left-0 right-0 bg-white border-t border-gray-200 shadow-lg bottom-0 z-30">
-      <div className="flex items-center">
-        {/* Scrollable dates area */}
-        <div
-          ref={scrollContainerRef}
-          className="flex-1 overflow-x-auto px-3 py-3 scrollbar-hide"
-        >
-          <div className="flex gap-1">
-            {days.map((day, idx) => {
-              const isSelected = idx === selectedIndex;
-              const isAdjacentMonth = !day.isCurrentMonth;
-              const isToday = format(day.date, 'yyyy-MM-dd') === todayStr;
-
-              // Determine button styling
-              let buttonClasses = 'flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-colors';
-              if (isSelected) {
-                buttonClasses += ' bg-blue-500 text-white';
-              } else if (isToday) {
-                buttonClasses += ' bg-blue-100 text-blue-600';
-              } else if (isAdjacentMonth) {
-                buttonClasses += ' text-gray-300 hover:bg-gray-100';
-              } else {
-                buttonClasses += ' text-gray-500 hover:bg-gray-100';
-              }
-
-              return (
-                <button
-                  key={format(day.date, 'yyyy-MM-dd')}
-                  ref={isSelected ? selectedButtonRef : null}
-                  onClick={() => onSelect(idx)}
-                  className={buttonClasses}
-                >
-                  <span className="text-xs font-semibold uppercase">{format(day.date, 'EEE')}</span>
-                  <span className="text-xl font-bold">{format(day.date, 'd')}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* TODAY button - fixed on right */}
-        <button
-          onClick={onGoToToday}
-          className="flex-shrink-0 flex flex-col items-center px-4 py-2 border-l border-gray-200 text-blue-500 hover:bg-gray-50 transition-colors"
-        >
-          <CalendarIcon size={20} />
-          <span className="text-xs font-semibold mt-1">TODAY</span>
-        </button>
-      </div>
-    </div>
-  );
-}
+// MobileDaySelector removed - replaced by MobileBottomBar component
 
  
