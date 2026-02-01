@@ -7,9 +7,10 @@ import { useAuth } from '@/context/AuthContext';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  redirectTo?: string;
 }
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, redirectTo = '/admin' }: LoginModalProps) {
   const { login } = useAuth();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -22,13 +23,18 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setIsLoading(true);
     setError('');
 
-    const success = login(password);
+    try {
+      const success = await login(password);
 
-    if (success) {
-      // Redirect to admin panel with full page reload
-      window.location.href = '/admin';
-    } else {
-      setError('Incorrect password');
+      if (success) {
+        // Redirect to the specified destination
+        window.location.href = redirectTo;
+      } else {
+        setError('Incorrect password');
+        setIsLoading(false);
+      }
+    } catch {
+      setError('An error occurred. Please try again.');
       setIsLoading(false);
     }
   };

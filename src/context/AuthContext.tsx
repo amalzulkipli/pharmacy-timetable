@@ -6,12 +6,13 @@ import { useAuth as useAuthHook, AuthMode } from '../hooks/useAuth';
 interface AuthContextType {
   authMode: AuthMode;
   isAdmin: boolean;
-  login: (password: string) => boolean;
-  logout: () => void;
+  login: (password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   switchToPublic: () => void;
   showLoginModal: boolean;
   openLoginModal: () => void;
   closeLoginModal: () => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

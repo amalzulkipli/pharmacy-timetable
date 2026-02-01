@@ -182,11 +182,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, isDraft: true });
   } catch (error) {
     console.error('Error saving draft:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', error.message, error.stack);
-    }
     return NextResponse.json(
-      { error: 'Failed to save draft', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to save draft' },
       { status: 500 }
     );
   }

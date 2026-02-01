@@ -6,7 +6,7 @@ import { STAFF_MEMBERS, SHIFT_DEFINITIONS, getStaffColors } from '../staff-data'
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { useStaffMembers, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Calendar as CalendarIcon, Printer, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Calendar as CalendarIcon, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import LoginModal from './LoginModal';
@@ -61,9 +61,11 @@ interface CalendarProps {
   hideTitle?: boolean;
   hideMobileLogout?: boolean;
   onMobileTabChange?: (tab: Tab) => void;
+  autoOpenLogin?: boolean;
+  loginRedirectTo?: string;
 }
 
-export default function Calendar({ mode = 'public', hideTitle = false, hideMobileLogout = false, onMobileTabChange }: CalendarProps) {
+export default function Calendar({ mode = 'public', hideTitle = false, hideMobileLogout = false, onMobileTabChange, autoOpenLogin = false, loginRedirectTo = '/admin' }: CalendarProps) {
   // Respect mode prop: if mode is 'public', never show admin features
   const isAdmin = mode === 'admin' ? true : false;
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -144,6 +146,13 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 
   // State for the login modal
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
+
+  // Auto-open login modal when redirected from /login page
+  useEffect(() => {
+    if (autoOpenLogin) {
+      setLoginModalOpen(true);
+    }
+  }, [autoOpenLogin]);
 
   // --- Mobile View State ---
   // Initialize to null to avoid desktop→mobile flash; skeleton shows until detected
@@ -572,110 +581,6 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     document.body.removeChild(link);
   };
 
-  const handleDownloadPDF = async () => {
-    try {
-      console.log('🚀 Starting PDF generation with Puppeteer...');
-      
-      if (!schedule) {
-        console.error('❌ No schedule data available');
-        alert('No schedule data available for export.');
-        return;
-      }
-
-      console.log('✅ Schedule found, generating paginated PDF with DOM capture...');
-      
-      // DIAGNOSTIC: Check schedule data completeness
-      console.log('🔍 DIAGNOSTIC - Schedule Data Analysis:', {
-        totalDays: schedule.days.length,
-        monthYear: `${selectedMonth}/${selectedYear}`,
-        firstDay: format(schedule.days[0]?.date, 'yyyy-MM-dd (EEE)'),
-        lastDay: format(schedule.days[schedule.days.length - 1]?.date, 'yyyy-MM-dd (EEE)'),
-        currentMonthDays: schedule.days.filter(d => d.isCurrentMonth).length,
-        totalWeeks: Math.ceil(schedule.days.length / 7),
-        expectedDaysRange: '35-42 days for full month grid'
-      });
-      
-      // Get calendar DOM element with perfect styling
-      const calendarElement = document.getElementById('calendar-container');
-      if (!calendarElement) {
-        console.error('❌ Calendar container not found');
-        alert('Calendar container not found. Please try refreshing the page.');
-        return;
-      }
-
-      // Create title and filename
-      const monthName = MONTHS[selectedMonth - 1];
-      const title = `Timetable ${monthName} ${selectedYear}`;
-      const filename = `Timetable-${monthName}-${selectedYear}.pdf`;
-
-      // Get the full HTML including styles
-      const extractedStyles = Array.from(document.styleSheets)
-        .map(sheet => {
-          try {
-            return Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
-          } catch {
-            return '';
-          }
-        })
-        .join('\n');
-
-      // Capture the perfect DOM with all styling
-      const perfectCalendarHTML = calendarElement.outerHTML;
-
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>${title}</title>
-            <style>
-              ${extractedStyles}
-            </style>
-          </head>
-          <body>
-            <h1 style="text-align: center; font-size: 24px; font-weight: bold; margin: 0 0 20px 0; color: #1f2937;">${title}</h1>
-            ${perfectCalendarHTML}
-          </body>
-        </html>
-      `;
-
-      // Send HTML to our API route with title and filename
-      const response = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          html: htmlContent,
-          title: title,
-          filename: filename
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`PDF generation failed: ${response.statusText}`);
-      }
-
-      // Get the PDF blob and trigger download
-      const pdfBlob = await response.blob();
-      const url = window.URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      console.log('🎉 PDF generated and downloaded successfully!');
-      
-    } catch (error) {
-      console.error('💥 Error during PDF generation:', error);
-      alert(`Failed to generate PDF: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
-
-  
 
   // --- Memoized Calculations for Performance ---
   const weeklyHourSummaries = useMemo(() => schedule ? getWeeklyHourSummaries(schedule, dynamicStaff) : [], [schedule, dynamicStaff]);
@@ -772,6 +677,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
         <LoginModal
           isOpen={isLoginModalOpen}
           onClose={() => setLoginModalOpen(false)}
+          redirectTo={loginRedirectTo}
         />
         {/* Maternity Leave Modal for mobile */}
         {maternityContext && (
@@ -815,7 +721,6 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
           onPublish={handlePublish}
           onDiscardDraft={handleDiscardDraft}
           onDownloadCSV={handleDownloadCSV}
-          onDownloadPDF={handleDownloadPDF}
           onPrevMonth={handlePrevMonth}
           onNextMonth={handleNextMonth}
           onToday={handleToday}
@@ -862,6 +767,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
         <LoginModal
           isOpen={isLoginModalOpen}
           onClose={() => setLoginModalOpen(false)}
+          redirectTo={loginRedirectTo}
         />
 
         {/* Maternity Leave Modal */}
@@ -898,7 +804,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 // Sub-Components for a Cleaner Structure
 // ================================================================================================
 
-function CalendarToolbar({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, hasDraft, onEnterEditMode, onSaveChanges, onCancelEdit, onPublish, onDiscardDraft, onDownloadCSV, onDownloadPDF, onPrevMonth, onNextMonth, onToday, copiedWeekNumber, onClearClipboard }: {
+function CalendarToolbar({ selectedMonth, setSelectedMonth, selectedYear, setSelectedYear, isEditMode, isAdmin, hasDraft, onEnterEditMode, onSaveChanges, onCancelEdit, onPublish, onDiscardDraft, onDownloadCSV, onPrevMonth, onNextMonth, onToday, copiedWeekNumber, onClearClipboard }: {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   selectedYear: number;
@@ -912,7 +818,6 @@ function CalendarToolbar({ selectedMonth, setSelectedMonth, selectedYear, setSel
   onPublish: () => void;
   onDiscardDraft: () => void;
   onDownloadCSV: () => void;
-  onDownloadPDF: () => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onToday: () => void;
@@ -979,11 +884,6 @@ function CalendarToolbar({ selectedMonth, setSelectedMonth, selectedYear, setSel
               <button onClick={onDownloadCSV} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                 <Download size={14}/>
                 <span>CSV</span>
-              </button>
-              {/* PDF Button */}
-              <button onClick={onDownloadPDF} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                <Printer size={14}/>
-                <span>PDF</span>
               </button>
               {/* Draft Workflow Buttons */}
               {isEditMode ? (
@@ -1494,8 +1394,8 @@ function MobileView({
   };
 
   // Handle logout
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     window.location.href = '/';
   };
 

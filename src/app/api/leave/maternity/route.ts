@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating maternity leave:', error);
     return NextResponse.json(
-      { error: 'Failed to create maternity leave', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to create maternity leave' },
       { status: 500 }
     );
   }

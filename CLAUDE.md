@@ -29,7 +29,9 @@ The project uses TypeScript with strict mode. Path alias: `@/*` maps to `./src/*
 Required in `.env`:
 ```bash
 DATABASE_URL="file:./pharmacy.db"   # SQLite database path (relative to prisma/schema.prisma)
-NEXT_PUBLIC_ADMIN_PASSWORD=<password>       # Admin login password
+NEXTAUTH_SECRET="<generated-secret>" # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+NEXTAUTH_URL="http://localhost:3000" # Base URL for NextAuth
+ADMIN_PASSWORD_HASH="<bcrypt-hash>"  # Generate with: node -e "console.log(require('bcryptjs').hashSync('password', 12))"
 ```
 
 ## Architecture
@@ -84,11 +86,13 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 | `/login` | Admin login page (modal style with blurred background) | Public |
 | `/admin` | Admin dashboard with tabbed interface (Timetable/Leave/Staff) | Protected |
 
-**Route Protection:** `src/middleware.ts` protects `/admin/*` routes using cookies. Redirects to `/login` if not authenticated.
+**Route Protection:** `src/middleware.ts` protects `/admin/*` routes and state-changing API routes using NextAuth v5 JWT sessions. Redirects to `/login` if not authenticated.
 
 **Login Flow:** Users can login via:
 1. Click login icon on calendar → shows LoginModal overlay with blurred background
 2. Direct access to `/admin/*` → redirects to `/login` page (also modal style)
+
+**Authentication:** Uses NextAuth v5 with Credentials provider. Password is stored as bcrypt hash in `ADMIN_PASSWORD_HASH` environment variable. Session is JWT-based with 24-hour expiry.
 
 ### API Routes
 
@@ -147,7 +151,7 @@ Main UI (~1400 lines), accepts `mode` prop:
 
 7. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
 
-8. **Authentication:** Cookie-based auth via `useAuth` hook. Login sets `pharmacy-admin-auth` cookie (24h expiry) for middleware protection. Password stored in `NEXT_PUBLIC_ADMIN_PASSWORD` env var.
+8. **Authentication:** Uses NextAuth v5 with Credentials provider. Password is bcrypt-hashed and stored in `ADMIN_PASSWORD_HASH` env var (server-side only). JWT session strategy with 24-hour expiry. Middleware (`src/middleware.ts`) protects both `/admin/*` pages and state-changing API routes.
 
 9. **StaffCard Edit Mode Colors:** In `StaffCard`, card colors use `editValue` prop when in edit mode (not `staffShift` data) so colors update immediately on dropdown change.
 

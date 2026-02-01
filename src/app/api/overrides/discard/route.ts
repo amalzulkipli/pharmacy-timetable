@@ -38,11 +38,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, discarded: true });
   } catch (error) {
     console.error('Error discarding draft:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', error.message, error.stack);
-    }
     return NextResponse.json(
-      { error: 'Failed to discard draft', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to discard draft' },
       { status: 500 }
     );
   }

@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+
+# Build output
+.next
+
+# Version control
+.git
+.gitignore
+
+# IDE and editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Claude Code
+.claude
+
+# Environment files (secrets should be injected at runtime)
+.env
+.env.local
+.env.development
+.env.production
+
+# Documentation
+*.md
+LICENSE
+
+# Testing
+coverage
+.nyc_output
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# SQLite database (should be mounted as volume)
+prisma/*.db
+prisma/*.db-journal
