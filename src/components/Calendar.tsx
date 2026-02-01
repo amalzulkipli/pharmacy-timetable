@@ -1757,21 +1757,14 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
   const isLeave = displayIsLeave;
   const isNotWorking = isOff || isLeave;
 
-  // Determine shift label
-  const shiftLabel = isOff
-    ? 'Day Off'
-    : isLeave
-    ? `${displayLeaveType} Leave`
-    : getShiftLabel(displayShift);
-
-  // Badge styling
+  // Badge styling - monospace for hours, muted for status
   const badgeClasses = isNotWorking
-    ? 'bg-gray-100 text-gray-600'
-    : avatarColors.badge;
+    ? 'bg-gray-100 text-gray-500 text-[11px]'
+    : `${avatarColors.badge} font-mono`;
 
-  // Card and avatar styling - grey out when not working
+  // Card styling - compact muted card for non-working, full card for working
   let cardClasses = isNotWorking
-    ? 'bg-gray-50 rounded-xl p-4 shadow-sm'
+    ? 'bg-gray-50/80 rounded-xl py-3 px-4 border border-dashed border-gray-200'
     : 'bg-white rounded-xl p-4 shadow-sm';
 
   // Add edit mode styling
@@ -1779,7 +1772,10 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
     cardClasses += ' cursor-pointer ring-2 ring-blue-200 hover:ring-blue-400 transition-all';
   }
 
+  // Avatar styling - gray and smaller for non-working
   const avatarBg = isNotWorking ? 'bg-gray-300' : avatarColors.bg;
+  const avatarSize = isNotWorking ? 'w-8 h-8' : 'w-10 h-10';
+  const avatarTextSize = isNotWorking ? 'text-[10px]' : 'text-xs';
   const barColor = staffColors.bar;
 
   const handleClick = () => {
@@ -1788,25 +1784,59 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
     }
   };
 
+  // Compact single-line for non-working staff
+  if (isNotWorking) {
+    return (
+      <div className={cardClasses} onClick={handleClick}>
+        <div className="flex items-center gap-3">
+          {/* Smaller gray avatar */}
+          <div className={`${avatarSize} ${avatarBg} rounded-full flex items-center justify-center flex-shrink-0`}>
+            <span className={`text-white font-semibold ${avatarTextSize}`}>{initials}</span>
+          </div>
+
+          {/* Name only */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-500 truncate">{staff.name}</h3>
+          </div>
+
+          {/* Status badge + Edit indicator */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${badgeClasses}`}>
+              {isLeave ? displayLeaveType : 'OFF'}
+            </span>
+            {isEditMode && (
+              <ChevronDown size={16} className="text-blue-500" />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Full card for working staff
   return (
     <div className={cardClasses} onClick={handleClick}>
       {/* Top section: Avatar + Info + Badge */}
       <div className="flex items-center gap-3">
-        {/* Smaller Avatar with border/shadow */}
-        <div className={`w-10 h-10 ${avatarBg} rounded-full flex items-center justify-center flex-shrink-0 border-2 border-white shadow-md`}>
-          <span className="text-white font-bold text-xs">{initials}</span>
+        {/* Avatar with border/shadow */}
+        <div className={`${avatarSize} ${avatarBg} rounded-full flex items-center justify-center flex-shrink-0 border-2 border-white shadow-md`}>
+          <span className={`text-white font-bold ${avatarTextSize}`}>{initials}</span>
         </div>
 
-        {/* Name and Shift Label */}
+        {/* Name and combined shift info */}
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-gray-900 truncate">{staff.name}</h3>
-          <p className="text-sm text-gray-500">{shiftLabel}</p>
+          <p className="text-sm text-gray-500">
+            {getShiftLabel(displayShift)}
+            <span className="mx-1.5 text-gray-300">·</span>
+            <span className="font-mono text-gray-400">{displayShift?.startTime}–{displayShift?.endTime}</span>
+          </p>
         </div>
 
         {/* Hours Badge + Edit indicator */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${badgeClasses}`}>
-            {isOff || isLeave ? (isLeave ? displayLeaveType : 'OFF') : `${displayShift?.workHours}h`}
+            {displayShift?.workHours}h
           </span>
           {isEditMode && (
             <ChevronDown size={18} className="text-blue-500" />
@@ -1814,32 +1844,16 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
         </div>
       </div>
 
-      {/* Progress Bar - full width, outside flex */}
-      {displayShift && (
-        <>
-          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full ${barColor}`}
-              style={{
-                marginLeft: `${calculateBarStart(displayShift.startTime)}%`,
-                width: `${calculateBarWidth(displayShift.startTime, displayShift.endTime)}%`
-              }}
-            />
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-500">
-            <Clock size={14} />
-            <span>{displayShift.startTime} - {displayShift.endTime}</span>
-          </div>
-        </>
-      )}
-
-      {/* Not Scheduled (if off or leave) */}
-      {(isOff || isLeave) && (
-        <div className="mt-2 flex items-center gap-1.5 text-sm text-gray-400">
-          <CalendarIcon size={14} />
-          <span className="italic">{isLeave ? `On ${displayLeaveType} leave` : 'Not scheduled'}</span>
-        </div>
-      )}
+      {/* Progress Bar - visual timeline */}
+      <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full ${barColor}`}
+          style={{
+            marginLeft: `${calculateBarStart(displayShift!.startTime)}%`,
+            width: `${calculateBarWidth(displayShift!.startTime, displayShift!.endTime)}%`
+          }}
+        />
+      </div>
     </div>
   );
 }
