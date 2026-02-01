@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { parseISO, getDay } from 'date-fns';
+import { getDay } from 'date-fns';
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS } from '@/staff-data';
 import { PUBLIC_HOLIDAYS } from '@/lib/schedule-generator';
+
+// Parse date string "yyyy-MM-dd" as local date (not UTC)
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
 
 // Helper to find shift key from shift definition
 function findShiftKey(shift: { startTime: string; endTime: string; workHours: number }): string | null {
@@ -57,7 +63,7 @@ export async function POST(request: NextRequest) {
     // 2. Seed public holidays
     for (const holiday of PUBLIC_HOLIDAYS) {
       try {
-        const date = parseISO(holiday.date);
+        const date = parseLocalDate(holiday.date);
         await prisma.publicHoliday.upsert({
           where: { date },
           create: {
@@ -80,7 +86,7 @@ export async function POST(request: NextRequest) {
 
         for (const [dateKey, dayOverrides] of Object.entries(monthOverrides as Record<string, unknown>)) {
           try {
-            const date = parseISO(dateKey);
+            const date = parseLocalDate(dateKey);
 
             for (const [key, value] of Object.entries(dayOverrides as Record<string, unknown>)) {
               if (key === 'replacements') {

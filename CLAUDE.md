@@ -109,6 +109,7 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 ### Key Hooks (`src/hooks/`)
 
 - `useScheduleDB.ts` - Database operations for overrides with offline fallback to localStorage
+- `useStaff.ts` - Fetches staff from database, merges with legacy hardcoded `STAFF_MEMBERS`. Exports `getActiveStaffForDate()` for filtering by start date
 - `useAuth.ts` - Admin authentication
 - `useLocalStorage.ts` - Local storage utilities
 
@@ -140,7 +141,7 @@ Main UI (~1400 lines), accepts `mode` prop:
 
 4. **Offline Support:** `useScheduleOverridesDB` caches to localStorage and queues changes when offline. Cache keys: `pharmacy-cache-YYYY-MM` (read cache), `pharmacy-pending-YYYY-MM` (pending changes).
 
-5. **Staff Colors:** `STAFF_COLORS` (card styling) and `AVATAR_COLORS` (mobile avatars) in `staff-data.ts`, keyed by staffId.
+5. **Staff Colors:** `STAFF_COLOR_PALETTE` in `staff-data.ts` provides 10 colors (indices 0-9). Legacy staff (fatimah, siti, pah, amal) use fixed indices 0-3 via `LEGACY_STAFF_COLOR_INDEX`. New staff are auto-assigned indices 4+. Use `getStaffColors(staffId, colorIndex)` to get the full color object (card, avatar, bar, hex). Legacy exports `STAFF_COLORS` and `AVATAR_COLORS` maintained for backward compatibility.
 
 6. **Public Holidays:** Stored in database, used for RL calculation. On holidays, all staff marked as off.
 
@@ -151,6 +152,8 @@ Main UI (~1400 lines), accepts `mode` prop:
 9. **StaffCard Edit Mode Colors:** In `StaffCard`, card colors use `editValue` prop when in edit mode (not `staffShift` data) so colors update immediately on dropdown change.
 
 10. **Copy/Paste Week Shifts:** In edit mode, Sundays show a kebab menu (⋮) to copy/paste entire week shifts. Copies by day-of-week mapping (Mon→Mon, Tue→Tue). State: `copiedWeek` stores `{weekNumber, data: Record<dayOfWeek_staffId, shiftKey>}`. Clipboard badge shows in toolbar when active.
+
+11. **New Staff Shift Patterns:** Staff not in the hardcoded `SHIFT_PATTERNS` (legacy staff) use `DEFAULT_SHIFT_PATTERNS` in `staff-data.ts`, which provides role-based defaults ("Pharmacist" or "Assistant Pharmacist") for both pattern 0 and pattern 1.
 
 ### Draft/Publish Workflow
 

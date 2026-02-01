@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { startOfMonth, endOfMonth, parseISO, format } from 'date-fns';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { SHIFT_DEFINITIONS } from '@/staff-data';
 
 // Helper to find shift key from shift definition
@@ -117,7 +117,10 @@ export async function POST(request: NextRequest) {
 
       // Insert new draft overrides
       for (const [dateKey, dayOverrides] of Object.entries(overrides)) {
-        const date = parseISO(dateKey);
+        // Parse date as local date (not UTC) to avoid timezone shift
+        // parseISO treats "2026-02-01" as UTC which shifts the date in non-UTC timezones
+        const [y, m, d] = dateKey.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
 
         for (const [key, value] of Object.entries(dayOverrides as Record<string, unknown>)) {
           // Skip replacements for now (they go directly to ReplacementShift)
