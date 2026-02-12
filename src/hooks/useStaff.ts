@@ -30,6 +30,13 @@ export function useStaffMembers() {
       try {
         setIsLoading(true);
         const response = await fetch('/api/staff');
+
+        // If unauthorized (public view), use fallback STAFF_MEMBERS
+        if (response.status === 401) {
+          setDbStaff([]);
+          return;
+        }
+
         if (!response.ok) {
           throw new Error('Failed to fetch staff');
         }
