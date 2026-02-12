@@ -2,13 +2,6 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install dependencies needed for Puppeteer
-RUN apk add --no-cache chromium
-
-# Set Puppeteer to use installed Chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-
 # Copy package files
 COPY package*.json ./
 
@@ -29,18 +22,11 @@ FROM node:20-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Install runtime dependencies
 RUN apk add --no-cache \
     dumb-init \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
+    ca-certificates
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

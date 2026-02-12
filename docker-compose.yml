@@ -1,14 +1,21 @@
 services:
   app:
     build: .
-    ports:
-      - "3000:3000"
+    networks:
+      - dokploy-network
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:./prisma/pharmacy.db
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      # Set these in Dokploy's Environment Variables UI:
+      # - NEXTAUTH_URL=https://pharmacy.yourdomain.com
+      # - NEXTAUTH_SECRET=<your-secret>
+      # - ADMIN_PASSWORD_HASH=<your-base64-bcrypt-hash>
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pharmacy.rule=Host(`pharmacy.yourdomain.com`)"
+      - "traefik.http.routers.pharmacy.entrypoints=websecure"
+      - "traefik.http.routers.pharmacy.tls.certResolver=letsencrypt"
+      - "traefik.http.services.pharmacy.loadbalancer.server.port=3000"
     volumes:
       - pharmacy_data:/app/prisma
     restart: unless-stopped
@@ -22,3 +29,7 @@ services:
 volumes:
   pharmacy_data:
     driver: local
+
+networks:
+  dokploy-network:
+    external: true

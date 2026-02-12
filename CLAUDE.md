@@ -6,8 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Development
 ```bash
-npm run dev          # Start Next.js dev server with Turbopack
-npm run build        # Build production bundle
+npm run dev          # Start Next.js dev server
+npm run dev:turbo    # Start dev server with Turbopack
+npm run dev:clean    # Clear .next cache and start dev server
+npm run build        # Build production bundle (standalone output)
 npm start            # Start production server
 npm run lint         # Run ESLint
 ```
@@ -31,16 +33,17 @@ Required in `.env`:
 DATABASE_URL="file:./pharmacy.db"   # SQLite database path (relative to prisma/schema.prisma)
 NEXTAUTH_SECRET="<generated-secret>" # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 NEXTAUTH_URL="http://localhost:3000" # Base URL for NextAuth
-ADMIN_PASSWORD_HASH="<bcrypt-hash>"  # Generate with: node -e "console.log(require('bcryptjs').hashSync('password', 12))"
+ADMIN_PASSWORD_HASH="<base64-encoded-bcrypt-hash>"
+# Generate with: node -e "const h = require('bcryptjs').hashSync('yourpassword', 12); console.log(Buffer.from(h).toString('base64'))"
+# NOTE: The hash is base64-encoded to avoid $ character issues in .env parsing. Auth code decodes it before comparing.
 ```
 
 ## Architecture
 
 ### Tech Stack
-- **Framework:** Next.js 15.5.9 (App Router, Turbopack)
+- **Framework:** Next.js 15.5.11 (App Router, standalone output)
 - **Database:** Prisma 6.19.1 with SQLite (`prisma/pharmacy.db`)
 - **UI:** React 19, TypeScript, Tailwind CSS v4
-- **PDF Generation:** Puppeteer (server-side)
 - **Date Utilities:** date-fns
 - **Icons:** lucide-react
 
@@ -86,7 +89,7 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 | `/login` | Admin login page (modal style with blurred background) | Public |
 | `/admin` | Admin dashboard with tabbed interface (Timetable/Leave/Staff) | Protected |
 
-**Route Protection:** `src/middleware.ts` protects `/admin/*` routes and state-changing API routes using NextAuth v5 JWT sessions. Redirects to `/login` if not authenticated.
+**Route Protection:** `src/middleware.ts` protects `/admin/*` routes and most API routes using NextAuth v5 JWT sessions. Only `GET /api/overrides` (schedule data) is publicly accessible without auth. All other API requests (including GET to staff/leave endpoints) require authentication. Redirects to `/login` for admin pages, returns 401 JSON for API routes.
 
 **Login Flow:** Users can login via:
 1. Click login icon on calendar → shows LoginModal overlay with blurred background
@@ -107,8 +110,8 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 | `GET/DELETE /api/leave/history` | Leave history entries (GET with staffId param, DELETE by id) |
 | `POST /api/leave/calculate-rl` | Recalculate replacement leave |
 | `GET/POST /api/leave/maternity` | Get active maternity periods / Create 98-day maternity leave |
+| `GET /api/health` | Health check endpoint (no auth required) |
 | `POST /api/migrate` | Seed database with initial data |
-| `POST /api/generate-pdf` | Server-side PDF generation |
 
 ### Key Hooks (`src/hooks/`)
 
@@ -131,7 +134,7 @@ Main UI (~1400 lines), accepts `mode` prop:
 - `mode="public"` - Read-only view for regular staff (used at `/`)
 - `mode="admin"` - Full edit mode with summaries, alerts, data manager (used at `/admin/schedule`)
 - 7-column CSS Grid (Mon-Sun)
-- CSV/PDF export (admin only)
+- CSV export (admin only)
 - Mobile responsive with `MobileStaffCard`
 - Overrides persisted via `useScheduleOverridesDB` hook
 
@@ -151,7 +154,7 @@ Main UI (~1400 lines), accepts `mode` prop:
 
 7. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
 
-8. **Authentication:** Uses NextAuth v5 with Credentials provider. Password is bcrypt-hashed and stored in `ADMIN_PASSWORD_HASH` env var (server-side only). JWT session strategy with 24-hour expiry. Middleware (`src/middleware.ts`) protects both `/admin/*` pages and state-changing API routes.
+8. **Authentication:** Uses NextAuth v5 with Credentials provider. Password is bcrypt-hashed, then base64-encoded, and stored in `ADMIN_PASSWORD_HASH` env var (server-side only). The auth code (`src/lib/auth.ts`) decodes from base64 before bcrypt comparison. JWT session strategy with 24-hour expiry.
 
 9. **StaffCard Edit Mode Colors:** In `StaffCard`, card colors use `editValue` prop when in edit mode (not `staffShift` data) so colors update immediately on dropdown change.
 
@@ -202,17 +205,6 @@ When looking up shift patterns:
 - `getISOWeek()` from date-fns determines week number
 - ISO week numbers differ from calendar week numbers (week starts Monday, week 1 contains Jan 4)
 - Pattern matching in `findShiftKey()` uses startTime + endTime + workHours tuple
-
-## PDF Generation
-
-Tailwind CSS v4's `oklch()` colors are incompatible with html2canvas. Solution: Puppeteer server-side rendering.
-
-**Endpoint:** `POST /api/generate-pdf`
-```typescript
-{ html: string, styles: string, title: string, filename: string }
-```
-
-**Layout:** A4 landscape, 2 weeks per page, CSS Grid fixes for Puppeteer.
 
 ## Mobile Responsiveness
 
