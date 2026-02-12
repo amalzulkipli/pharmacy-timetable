@@ -5,7 +5,7 @@ services:
       - dokploy-network
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:./prisma/pharmacy.db
+      - DATABASE_URL=file:./pharmacy.db
       # Set these in Dokploy's Environment Variables UI:
       # - NEXTAUTH_URL=https://st.farmasialde.com/timetable
       # - NEXTAUTH_SECRET=<your-secret>
