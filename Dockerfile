@@ -29,11 +29,13 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV DATABASE_URL="file:./pharmacy.db"
+ENV TZ=Asia/Kuala_Lumpur
 
 # Install runtime dependencies
 RUN apk add --no-cache \
     dumb-init \
-    ca-certificates
+    ca-certificates \
+    tzdata
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
