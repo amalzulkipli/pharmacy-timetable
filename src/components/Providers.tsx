@@ -7,5 +7,5 @@ interface ProvidersProps {
 }
 
 export function Providers({ children }: ProvidersProps) {
-  return <SessionProvider>{children}</SessionProvider>;
+  return <SessionProvider basePath="/timetable/api/auth">{children}</SessionProvider>;
 }
