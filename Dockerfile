@@ -22,6 +22,8 @@ FROM node:20-alpine
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
 # Install runtime dependencies
 RUN apk add --no-cache \
