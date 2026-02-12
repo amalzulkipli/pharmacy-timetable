@@ -7,12 +7,12 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=file:./prisma/pharmacy.db
       # Set these in Dokploy's Environment Variables UI:
-      # - NEXTAUTH_URL=https://pharmacy.yourdomain.com
+      # - NEXTAUTH_URL=https://st.farmasialde.com/timetable
       # - NEXTAUTH_SECRET=<your-secret>
       # - ADMIN_PASSWORD_HASH=<your-base64-bcrypt-hash>
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.pharmacy.rule=Host(`pharmacy.yourdomain.com`)"
+      - "traefik.http.routers.pharmacy.rule=Host(`st.farmasialde.com`) && PathPrefix(`/timetable`)"
       - "traefik.http.routers.pharmacy.entrypoints=websecure"
       - "traefik.http.routers.pharmacy.tls.certResolver=letsencrypt"
       - "traefik.http.services.pharmacy.loadbalancer.server.port=3000"
@@ -20,7 +20,7 @@ services:
       - pharmacy_data:/app/prisma
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/timetable/api/health"]
       interval: 30s
       timeout: 3s
       retries: 3
