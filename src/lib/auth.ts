@@ -55,6 +55,14 @@ const authConfig: NextAuthConfig = {
     maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Ensure redirects go to the app basePath
+      if (url === baseUrl || url === baseUrl + '/') {
+        return baseUrl + '/timetable';
+      }
+      if (url.startsWith(baseUrl)) return url;
+      return baseUrl + '/timetable';
+    },
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
