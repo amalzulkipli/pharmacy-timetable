@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { STAFF_MEMBERS } from '@/staff-data';
+import { apiUrl } from '@/lib/api';
 import type { StaffMember } from '@/types/schedule';
 
 // Extended StaffMember type with database fields
@@ -29,7 +30,7 @@ export function useStaffMembers() {
     const fetchStaff = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/staff');
+        const response = await fetch(apiUrl('/api/staff'));
 
         // If unauthorized (public view), use fallback STAFF_MEMBERS
         if (response.status === 401) {

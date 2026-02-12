@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ShiftDefinition, ReplacementShift } from '@/types/schedule';
+import { apiUrl } from '@/lib/api';
 
 interface OverrideData {
   shift: ShiftDefinition | null;
@@ -60,7 +61,7 @@ export function useScheduleOverridesDB({
     setError(null);
 
     try {
-      const response = await fetch(`/api/overrides?year=${year}&month=${month}&view=${view}`);
+      const response = await fetch(apiUrl(`/api/overrides?year=${year}&month=${month}&view=${view}`));
 
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.statusText}`);
@@ -123,7 +124,7 @@ export function useScheduleOverridesDB({
   const saveOverrides = useCallback(
     async (newOverrides: Record<string, MonthOverrides>): Promise<{ success: boolean; error?: string }> => {
       try {
-        const response = await fetch('/api/overrides', {
+        const response = await fetch(apiUrl('/api/overrides'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ year, month, overrides: newOverrides }),
@@ -171,7 +172,7 @@ export function useScheduleOverridesDB({
   // Publish draft to live
   const publishDraft = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch('/api/overrides/publish', {
+      const response = await fetch(apiUrl('/api/overrides/publish'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ year, month }),
@@ -199,7 +200,7 @@ export function useScheduleOverridesDB({
   // Discard draft and revert to published state
   const discardDraft = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await fetch('/api/overrides/discard', {
+      const response = await fetch(apiUrl('/api/overrides/discard'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ year, month }),
@@ -298,7 +299,7 @@ export function useMigrationStatus() {
   useEffect(() => {
     async function checkStatus() {
       try {
-        const response = await fetch('/api/migrate');
+        const response = await fetch(apiUrl('/api/migrate'));
         if (response.ok) {
           const data = await response.json();
           setStatus(data);
@@ -336,7 +337,7 @@ export function useMigration() {
     setResult(null);
 
     try {
-      const response = await fetch('/api/migrate', {
+      const response = await fetch(apiUrl('/api/migrate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ localStorageData, seedOnly }),

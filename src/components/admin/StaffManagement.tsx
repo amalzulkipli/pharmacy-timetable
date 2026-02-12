@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, Pencil, Trash2, Save, X, Loader2 } from 'lucide-react';
 import { AVATAR_COLORS } from '@/staff-data';
+import { apiUrl } from '@/lib/api';
 
 interface Staff {
   id: string;
@@ -108,7 +109,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
   const fetchStaff = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/staff');
+      const response = await fetch(apiUrl('/api/staff'));
       if (!response.ok) throw new Error('Failed to fetch staff');
       const data = await response.json();
       setStaff(data);
@@ -154,7 +155,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
     try {
       setIsSaving(true);
       const isEditing = editingId !== null;
-      const url = isEditing ? `/api/staff/${editingId}` : '/api/staff';
+      const url = isEditing ? apiUrl(`/api/staff/${editingId}`) : apiUrl('/api/staff');
       const method = isEditing ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -181,7 +182,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
     if (!confirm('Are you sure you want to deactivate this staff member?')) return;
 
     try {
-      const response = await fetch(`/api/staff/${staffId}`, {
+      const response = await fetch(apiUrl(`/api/staff/${staffId}`), {
         method: 'DELETE',
       });
 

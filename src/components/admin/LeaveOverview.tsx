@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { LayoutGrid, RefreshCw, Loader2 } from 'lucide-react';
 import StaffLeaveCard from './StaffLeaveCard';
+import { apiUrl } from '@/lib/api';
 
 interface MaternityPeriod {
   startDate: string;
@@ -62,8 +63,8 @@ export default function LeaveOverview() {
 
       // Fetch balances and history in parallel
       const [balancesRes, historyRes] = await Promise.all([
-        fetch(`/api/leave/balances?year=${selectedYear}`),
-        fetch(`/api/leave/history?year=${selectedYear}`),
+        fetch(apiUrl(`/api/leave/balances?year=${selectedYear}`)),
+        fetch(apiUrl(`/api/leave/history?year=${selectedYear}`)),
       ]);
 
       if (!balancesRes.ok) throw new Error('Failed to fetch balances');
@@ -97,7 +98,7 @@ export default function LeaveOverview() {
   const handleRecalculateRL = async () => {
     try {
       setIsRecalculating(true);
-      const response = await fetch('/api/leave/calculate-rl', {
+      const response = await fetch(apiUrl('/api/leave/calculate-rl'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ year: selectedYear }),

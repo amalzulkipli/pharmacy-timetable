@@ -9,6 +9,7 @@ import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Calendar as CalendarIcon, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
+import { apiUrl } from '../lib/api';
 import LoginModal from './LoginModal';
 import StaffHoursOverview from './admin/StaffHoursOverview';
 import AppHeader from './AppHeader';
@@ -536,7 +537,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   // Handle maternity leave confirmation
   const handleMaternityLeaveConfirm = async (staffId: string, startDate: Date) => {
     try {
-      const response = await fetch('/api/leave/maternity', {
+      const response = await fetch(apiUrl('/api/leave/maternity'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ staffId, startDate: startDate.toISOString() }),
