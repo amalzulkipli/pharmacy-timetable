@@ -2,7 +2,7 @@
 
 import { LogIn, LogOut } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import Image from 'next/image';
+import AldeIcon from './AldeIcon';
 
 export interface TabConfig {
   id: string;
@@ -35,14 +35,7 @@ export default function AppHeader({
         <div className="flex items-center justify-between h-14">
           {/* Left: Logo/Title */}
           <div className="flex items-center gap-2">
-            <Image
-              src="/alde-icon.svg"
-              alt="Farmasi Alde"
-              width={32}
-              height={32}
-              className="rounded-lg"
-              unoptimized
-            />
+            <AldeIcon />
             <span className="font-bold text-lg text-gray-900">Alde ST Timetable</span>
             {!isOnline && (
               <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full ml-2">

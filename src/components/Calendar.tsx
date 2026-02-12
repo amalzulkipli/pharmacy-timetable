@@ -7,7 +7,7 @@ import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, Replacem
 import { useStaffMembers, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
-import Image from 'next/image';
+import AldeIcon from './AldeIcon';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
@@ -1522,14 +1522,7 @@ function MobileHeader({
     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
       {/* Left: Logo + Title + Draft badge */}
       <div className="flex items-center gap-2">
-        <Image
-          src="/alde-icon.svg"
-          alt="Farmasi Alde"
-          width={32}
-          height={32}
-          className="rounded-lg"
-          unoptimized
-        />
+        <AldeIcon />
         <h1 className="text-lg font-bold text-[#37352f]">
           {isEditMode ? 'Editing...' : 'Alde ST Timetable'}
         </h1>
