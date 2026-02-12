@@ -5,7 +5,6 @@ import type { NextAuthConfig } from 'next-auth';
 
 const authConfig: NextAuthConfig = {
   trustHost: true,
-  basePath: '/timetable/api/auth',
   providers: [
     Credentials({
       name: 'Admin Login',
