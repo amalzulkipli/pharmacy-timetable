@@ -17,7 +17,7 @@ fi
 
 # Apply any pending migrations to the database
 echo "Running database migrations..."
-npx prisma migrate deploy
+node ./node_modules/prisma/build/index.js migrate deploy
 echo "Migrations complete."
 
 echo "Starting application..."
