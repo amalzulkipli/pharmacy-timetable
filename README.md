@@ -1,21 +1,20 @@
 # Pharmacy Staff Scheduling System
 
-A Next.js-based web application for managing pharmacy staff schedules with visual calendar interface, CSV/PDF export capabilities, and intelligent shift management.
+A Next.js-based web application for managing pharmacy staff schedules with visual calendar interface, CSV export capabilities, and intelligent shift management.
 
 ## 🏗️ Architecture Overview
 
 ### Tech Stack
-- **Frontend:** Next.js 15.3.4 with React, TypeScript
-- **Styling:** Tailwind CSS v4.1.11
-- **PDF Generation:** Puppeteer v24.11.1 (server-side)
-- **Build Tool:** Turbopack (Next.js dev mode)
+- **Frontend:** Next.js 15.5.11 with React 19, TypeScript
+- **Database:** Prisma 6.19.1 with SQLite
+- **Styling:** Tailwind CSS v4
+- **Auth:** NextAuth v5 (JWT sessions, bcrypt)
 
 ### Project Structure
 ```
 pharmacy-timetable/
 ├── src/
 │   ├── app/
-│   │   ├── api/generate-pdf/route.ts    # PDF generation API endpoint
 │   │   ├── layout.tsx                   # Root layout component
 │   │   ├── page.tsx                     # Main application page
 │   │   └── globals.css                  # Global CSS styles
@@ -41,7 +40,7 @@ pharmacy-timetable/
 - Monthly navigation with previous/next buttons
 - Color-coded staff cards for easy identification
 - Responsive design with horizontal scrolling
-- CSV and PDF export functionality
+- CSV export functionality
 
 **Props Interface:**
 ```typescript
@@ -84,35 +83,6 @@ export function generateSchedule(
 2. Apply annual leave constraints
 3. Validate coverage requirements
 4. Adjust OFF day patterns if needed to maintain 2-consecutive-day rule
-
-### 3. PDF Generation API (`src/app/api/generate-pdf/route.ts`)
-
-**Purpose:** Server-side PDF generation using Puppeteer for high-quality calendar exports.
-
-**Endpoint:** `POST /api/generate-pdf`
-
-**Request Body:**
-```typescript
-{
-  html: string;           // Complete HTML with calendar
-  styles: string;         // Extracted CSS styles
-  title: string;          // PDF title (e.g., "Timetable July 2025")
-  filename: string;       // Output filename
-}
-```
-
-**PDF Features:**
-- Multi-page pagination (2 weeks per page)
-- A4 landscape format with optimized scaling
-- Preserves web UI styling and colors
-- Proper page breaks and headers
-- Dynamic width calculation for content
-
-**Technical Implementation:**
-1. **DOM Capture:** Extract calendar HTML with all styling
-2. **CSS Enhancement:** Add PDF-specific CSS for grid layout fixes
-3. **Page Splitting:** Programmatically split calendar by weeks
-4. **PDF Generation:** Use Puppeteer to render and export
 
 ## 🎨 Visual Design System
 
@@ -200,12 +170,6 @@ interface StaffShift {
 - Filename format: `pharmacy-schedule-[Month]-[Year].csv`
 - Includes all staff assignments with times
 
-### PDF Export
-- Multi-page landscape PDF with professional formatting
-- Filename format: `Timetable-[Month]-[Year].pdf`
-- Preserves visual styling from web interface
-- 2 weeks per page for optimal readability
-
 ## 🔧 Development
 
 ### Getting Started
@@ -218,11 +182,10 @@ npm run dev
 ### Key Dependencies
 ```json
 {
-  "next": "15.3.4",
-  "react": "19.0.0",
+  "next": "^15.5.11",
+  "react": "^19.0.0",
   "typescript": "^5",
-  "tailwindcss": "^4.1.11",
-  "puppeteer": "^24.11.1"
+  "tailwindcss": "^4"
 }
 ```
 
@@ -234,19 +197,12 @@ npm start
 
 ## 🐛 Technical Considerations
 
-### PDF Generation Challenges
-- **Tailwind v4.1.11 Compatibility:** Uses modern `oklch()` colors incompatible with html2canvas
-- **Solution:** Puppeteer-based server-side rendering with CSS overrides
-- **Grid Layout:** CSS Grid requires specific fixes for Puppeteer rendering
-- **Performance:** PDF generation ~3-5 seconds per document
-
 ### Browser Compatibility
 - Modern browsers with CSS Grid support
 - Responsive design for mobile/tablet viewing
 - Horizontal scrolling fallback for narrow screens
 
 ### Memory Management
-- Puppeteer instances properly closed after PDF generation
 - Schedule data regenerated only when month/year changes
 - Efficient DOM manipulation for large calendars
 
@@ -263,14 +219,13 @@ npm start
 - **Database Integration:** Replace static data with persistent storage
 - **Real-time Updates:** WebSocket for multi-user collaboration
 - **Mobile App:** React Native companion app
-- **Performance:** Optimized PDF generation with streaming
+- **Performance:** Caching and lazy loading optimizations
 
 ## 🎯 AI Context Notes
 
 ### For LLM Development
 - **Schedule Logic:** Located in `schedule-generator.ts` - complex constraint satisfaction
-- **PDF Issues:** Solved Tailwind v4/html2canvas incompatibility with Puppeteer
-- **Grid Layout:** Uses CSS Grid extensively - require specific PDF rendering fixes
+- **Grid Layout:** Uses CSS Grid extensively
 - **State Management:** React useState pattern - consider Redux for complexity growth
 - **Type Safety:** Comprehensive TypeScript interfaces - extend for new features
 
