@@ -8,9 +8,10 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Farmasi Alde | Staff Timetable",
   description: "Farmasi Alde staff scheduling and timetable system",
-  manifest: "/manifest.json",
+  manifest: "/timetable/manifest.json",
   icons: {
-    apple: "/apple-icon.png",
+    icon: "/timetable/icon.svg",
+    apple: "/timetable/apple-icon.png",
   },
 };
 

@@ -1528,6 +1528,7 @@ function MobileHeader({
           width={32}
           height={32}
           className="rounded-lg"
+          unoptimized
         />
         <h1 className="text-lg font-bold text-[#37352f]">
           {isEditMode ? 'Editing...' : 'Alde ST Timetable'}

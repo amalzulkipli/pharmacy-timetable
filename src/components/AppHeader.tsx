@@ -41,6 +41,7 @@ export default function AppHeader({
               width={32}
               height={32}
               className="rounded-lg"
+              unoptimized
             />
             <span className="font-bold text-lg text-gray-900">Alde ST Timetable</span>
             {!isOnline && (
