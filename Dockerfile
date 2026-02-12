@@ -35,7 +35,8 @@ ENV TZ=Asia/Kuala_Lumpur
 RUN apk add --no-cache \
     dumb-init \
     ca-certificates \
-    tzdata
+    tzdata \
+    sqlite
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -49,9 +50,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Copy Prisma files (schema + migrations + generated client)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
-
-# Install Prisma CLI for runtime migrations (has deep transitive deps, so npm install is cleanest)
-RUN npm install --no-save prisma@6.19.1
 
 # Copy database template (seeded with real data from local dev)
 RUN mkdir -p /app/prisma-template
