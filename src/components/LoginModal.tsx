@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Lock, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -12,6 +13,7 @@ interface LoginModalProps {
 
 export default function LoginModal({ isOpen, onClose, redirectTo = '/admin' }: LoginModalProps) {
   const { login } = useAuth();
+  const router = useRouter();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -27,8 +29,8 @@ export default function LoginModal({ isOpen, onClose, redirectTo = '/admin' }: L
       const success = await login(password);
 
       if (success) {
-        // Redirect to the specified destination
-        window.location.href = redirectTo;
+        // Redirect to the specified destination (router.push respects basePath)
+        router.push(redirectTo);
       } else {
         setError('Incorrect password');
         setIsLoading(false);
