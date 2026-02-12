@@ -1,11 +1,11 @@
-export default function AldeIcon({ size = 32 }: { size?: number }) {
+export default function AldeIcon({ size = 24 }: { size?: number }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 259.44 260.39"
       width={size}
       height={size}
-      className="rounded-lg"
+      className="shrink-0"
     >
       <path
         fill="#00adee"
