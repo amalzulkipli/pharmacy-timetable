@@ -6,7 +6,8 @@ import { STAFF_MEMBERS, SHIFT_DEFINITIONS, getStaffColors } from '../staff-data'
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { useStaffMembers, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
-import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Calendar as CalendarIcon, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
+import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
@@ -1521,9 +1522,13 @@ function MobileHeader({
     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
       {/* Left: Logo + Title + Draft badge */}
       <div className="flex items-center gap-2">
-        <div className="bg-blue-600 p-1.5 rounded-lg">
-          <CalendarIcon className="h-5 w-5 text-white" />
-        </div>
+        <Image
+          src="/alde-icon.svg"
+          alt="Farmasi Alde"
+          width={32}
+          height={32}
+          className="rounded-lg"
+        />
         <h1 className="text-lg font-bold text-[#37352f]">
           {isEditMode ? 'Editing...' : 'Alde ST Timetable'}
         </h1>

@@ -6,8 +6,12 @@ import { Providers } from "@/components/Providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Pharmacy Staff Scheduler",
-  description: "Automated pharmacy staff scheduling system",
+  title: "Farmasi Alde | Staff Timetable",
+  description: "Farmasi Alde staff scheduling and timetable system",
+  manifest: "/manifest.json",
+  icons: {
+    apple: "/apple-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
