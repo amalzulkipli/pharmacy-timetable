@@ -46,11 +46,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Copy Prisma files (schema + migrations + generated client + CLI for runtime migrations)
+# Copy Prisma files (schema + migrations + generated client)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# Install Prisma CLI for runtime migrations (has deep transitive deps, so npm install is cleanest)
+RUN npm install --no-save prisma@6.19.1
 
 # Copy database template (seeded with real data from local dev)
 RUN mkdir -p /app/prisma-template
