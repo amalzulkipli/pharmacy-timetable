@@ -42,3 +42,4 @@ npm-debug.log*
 # SQLite database (should be mounted as volume)
 prisma/*.db
 prisma/*.db-journal
+!prisma/pharmacy-seed.db
