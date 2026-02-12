@@ -63,7 +63,7 @@ USER nextjs
 
 # Health check (30s start period to allow DB init)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD wget --spider -q http://localhost:3000/timetable/api/health || exit 1
+  CMD wget --spider -q http://0.0.0.0:3000/timetable/api/health || exit 1
 
 EXPOSE 3000
 
