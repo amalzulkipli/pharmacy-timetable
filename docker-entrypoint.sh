@@ -1,8 +1,13 @@
 #!/bin/sh
 set -e
 
-# Initialize database from template if it doesn't exist (fresh volume mount)
-if [ ! -f /app/prisma/pharmacy.db ]; then
+# Check if we should force-replace the database from template
+# Set FORCE_DB_SEED=true in env to overwrite existing DB with template
+if [ "$FORCE_DB_SEED" = "true" ] && [ -f /app/prisma-template/pharmacy.db ]; then
+  echo "FORCE_DB_SEED=true: Replacing database with template..."
+  cp /app/prisma-template/pharmacy.db /app/prisma/pharmacy.db
+  echo "Database replaced from template."
+elif [ ! -f /app/prisma/pharmacy.db ]; then
   echo "Database not found, initializing from template..."
   cp /app/prisma-template/pharmacy.db /app/prisma/pharmacy.db
   echo "Database initialized."

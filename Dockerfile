@@ -48,9 +48,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 
-# Copy database template (used to initialize empty volumes)
+# Copy database template (seeded with real data from local dev)
 RUN mkdir -p /app/prisma-template
-COPY --from=builder --chown=nextjs:nodejs /app/prisma/pharmacy.db ./prisma-template/pharmacy.db
+COPY --chown=nextjs:nodejs prisma/pharmacy-seed.db ./prisma-template/pharmacy.db
 
 # Copy entrypoint script
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
