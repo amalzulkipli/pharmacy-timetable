@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface ErrorProps {
@@ -9,6 +10,8 @@ interface ErrorProps {
 }
 
 export default function Error({ error, reset }: ErrorProps) {
+  const router = useRouter();
+
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Application error:', error);
@@ -39,7 +42,7 @@ export default function Error({ error, reset }: ErrorProps) {
           </button>
 
           <button
-            onClick={() => (window.location.href = '/')}
+            onClick={() => router.push('/')}
             className="w-full px-4 py-3 text-gray-600 font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
           >
             Go to homepage

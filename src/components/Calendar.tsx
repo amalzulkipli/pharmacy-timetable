@@ -7,6 +7,7 @@ import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, Replacem
 import { useStaffMembers, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Calendar as CalendarIcon, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { useScheduleOverridesDB } from '../hooks/useScheduleDB';
 import { apiUrl } from '../lib/api';
@@ -1330,6 +1331,7 @@ function MobileView({
   onOpenMaternityModal,
 }: MobileViewProps) {
   const { logout } = useAuth();
+  const router = useRouter();
   const selectedDay = schedule.days[selectedDayIndex];
 
   // Drawer and bottom sheet state
@@ -1397,7 +1399,7 @@ function MobileView({
   // Handle logout
   const handleLogout = async () => {
     await logout();
-    window.location.href = '/';
+    router.push('/');
   };
 
   // Get current value for the shift picker

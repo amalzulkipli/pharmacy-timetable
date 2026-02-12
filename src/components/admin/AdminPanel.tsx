@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Calendar as CalendarIcon, CalendarDays, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Calendar from '@/components/Calendar';
@@ -32,9 +33,11 @@ export default function AdminPanel() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/';
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
   };
 
   const handleMobileTabChange = (tab: Tab) => {
