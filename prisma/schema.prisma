@@ -51,9 +51,12 @@ model ScheduleOverride {
   staffId   String // Foreign key to Staff.staffId
 
   // Override data
-  shiftType String? // e.g., "11h", "9h_early", null for off
-  isLeave   Boolean @default(false)
-  leaveType String? // "AL" | "RL" | "EL" | "ML" | "MAT" | null
+  shiftType       String? // e.g., "11h", "9h_early", null for off
+  isLeave         Boolean @default(false)
+  leaveType       String? // "AL" | "RL" | "EL" | "ML" | "MAT" | null
+  customStartTime String? // e.g., "10:30" - only set for custom shifts
+  customEndTime   String? // e.g., "18:00" - only set for custom shifts
+  customWorkHours Float?  // e.g., 7.5 - only set for custom shifts
 
   // Metadata
   createdAt DateTime @default(now())
@@ -169,9 +172,12 @@ model ScheduleDraft {
   staffId   String // Foreign key to Staff.staffId
 
   // Override data (same structure as ScheduleOverride)
-  shiftType String? // e.g., "11h", "9h_early", null for off
-  isLeave   Boolean @default(false)
-  leaveType String? // "AL" | "RL" | "EL" | "ML" | "MAT" | null
+  shiftType       String? // e.g., "11h", "9h_early", null for off
+  isLeave         Boolean @default(false)
+  leaveType       String? // "AL" | "RL" | "EL" | "ML" | "MAT" | null
+  customStartTime String? // e.g., "10:30" - only set for custom shifts
+  customEndTime   String? // e.g., "18:00" - only set for custom shifts
+  customWorkHours Float?  // e.g., 7.5 - only set for custom shifts
 
   // Metadata
   createdAt DateTime @default(now())

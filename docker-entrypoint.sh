@@ -15,5 +15,10 @@ else
   echo "Existing database found."
 fi
 
+# Apply any pending migrations to the database
+echo "Running database migrations..."
+npx prisma migrate deploy
+echo "Migrations complete."
+
 echo "Starting application..."
 exec node server.js

@@ -56,6 +56,28 @@ function calculateBarWidth(startTime: string, endTime: string): number {
 // Note: Bar colors are now dynamically retrieved via getStaffColors(staffId, colorIndex).bar
 
 // ================================================================================================
+// Custom Time Utilities
+// ================================================================================================
+
+function isCustomTimeKey(value: string): boolean {
+  return value.startsWith('custom_');
+}
+
+function parseCustomTimeKey(value: string): { startTime: string; endTime: string; workHours: number } | null {
+  if (!isCustomTimeKey(value)) return null;
+  const [, startTime, endTime] = value.split('_');
+  if (!startTime || !endTime) return null;
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  const workHours = Math.round(((eh * 60 + em) - (sh * 60 + sm)) / 60 * 10) / 10;
+  return { startTime, endTime, workHours };
+}
+
+function makeCustomTimeKey(startTime: string, endTime: string): string {
+  return `custom_${startTime}_${endTime}`;
+}
+
+// ================================================================================================
 // Main Calendar Component
 // ================================================================================================
 
@@ -146,6 +168,10 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   // State for the maternity leave modal
   const [isMaternityModalOpen, setMaternityModalOpen] = useState(false);
   const [maternityContext, setMaternityContext] = useState<{ dayKey: string; staffId: string } | null>(null);
+
+  // State for the custom time modal
+  const [isCustomTimeModalOpen, setCustomTimeModalOpen] = useState(false);
+  const [customTimeContext, setCustomTimeContext] = useState<{ dayKey: string; staffId: string } | null>(null);
 
   // State for the login modal
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
@@ -329,12 +355,13 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
         } else if (shift) {
           // FIX: Use content-based comparison instead of reference comparison
           // Compare shift properties to find matching SHIFT_DEFINITIONS key
-          key = Object.keys(SHIFT_DEFINITIONS).find(k => {
+          const foundKey = Object.keys(SHIFT_DEFINITIONS).find(k => {
             const def = SHIFT_DEFINITIONS[k];
             return def.startTime === shift.startTime &&
                    def.endTime === shift.endTime &&
                    def.workHours === shift.workHours;
-          }) || 'off';
+          });
+          key = foundKey || makeCustomTimeKey(shift.startTime, shift.endTime);
         }
         buffer[dayKey][staffId] = key;
       });
@@ -365,6 +392,11 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
         if (value.startsWith('leave')) {
           isLeave = true;
           leaveType = value.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML' | 'MAT';
+        } else if (isCustomTimeKey(value)) {
+          const parsed = parseCustomTimeKey(value);
+          if (parsed) {
+            newShift = { type: 'custom', timing: null, ...parsed };
+          }
         } else if (value !== 'off') {
           newShift = SHIFT_DEFINITIONS[value];
         }
@@ -417,6 +449,12 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     if (value === 'leave_mat') {
       setMaternityContext({ dayKey, staffId });
       setMaternityModalOpen(true);
+      return;
+    }
+    // Intercept custom time picker selection to show modal
+    if (value === 'custom_time_picker') {
+      setCustomTimeContext({ dayKey, staffId });
+      setCustomTimeModalOpen(true);
       return;
     }
     setEditBuffer(prev => ({ ...prev, [dayKey]: { ...prev[dayKey], [staffId]: value } }));
@@ -695,6 +733,23 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
             onConfirm={handleMaternityLeaveConfirm}
           />
         )}
+        {/* Custom Time Modal for mobile */}
+        {isCustomTimeModalOpen && customTimeContext && (
+          <CustomTimeModal
+            context={customTimeContext}
+            staffMembers={dynamicStaff}
+            onClose={() => {
+              setCustomTimeModalOpen(false);
+              setCustomTimeContext(null);
+            }}
+            onApply={(start, end) => {
+              const key = makeCustomTimeKey(start, end);
+              handleEditBufferChange(customTimeContext.dayKey, customTimeContext.staffId, key);
+              setCustomTimeModalOpen(false);
+              setCustomTimeContext(null);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -784,6 +839,24 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
             staffId={maternityContext.staffId}
             initialDate={new Date(maternityContext.dayKey)}
             onConfirm={handleMaternityLeaveConfirm}
+          />
+        )}
+
+        {/* Custom Time Modal */}
+        {isCustomTimeModalOpen && customTimeContext && (
+          <CustomTimeModal
+            context={customTimeContext}
+            staffMembers={dynamicStaff}
+            onClose={() => {
+              setCustomTimeModalOpen(false);
+              setCustomTimeContext(null);
+            }}
+            onApply={(start, end) => {
+              const key = makeCustomTimeKey(start, end);
+              handleEditBufferChange(customTimeContext.dayKey, customTimeContext.staffId, key);
+              setCustomTimeModalOpen(false);
+              setCustomTimeContext(null);
+            }}
           />
         )}
 
@@ -1086,6 +1159,8 @@ function ShiftDisplay({ staffShift, staffId, colorIndex }: { staffShift: DaySche
 }
 
 function ShiftDropdown({ value, onChange }: { value: string, onChange: (value: string) => void }) {
+  const customParsed = isCustomTimeKey(value) ? parseCustomTimeKey(value) : null;
+
   return (
     <select value={value} onChange={e => onChange(e.target.value)} className="w-full p-1 border-gray-300 rounded-md text-xs bg-white/50">
       <optgroup label="Status">
@@ -1106,6 +1181,12 @@ function ShiftDropdown({ value, onChange }: { value: string, onChange: (value: s
           const shift = SHIFT_DEFINITIONS[key];
           return <option key={key} value={key}>{`${shift.type} (${shift.startTime}-${shift.endTime})`}</option>
         })}
+      </optgroup>
+      <optgroup label="Custom">
+        <option value="custom_time_picker">Custom Time...</option>
+        {customParsed && (
+          <option value={value}>{`✎ ${customParsed.startTime}-${customParsed.endTime} (${customParsed.workHours}h)`}</option>
+        )}
       </optgroup>
     </select>
   );
@@ -1231,6 +1312,87 @@ function ReplacementModal({ context, onClose, onSave }: { context: { dayKey: str
   )
 }
 
+function CustomTimeModal({ context, staffMembers, onClose, onApply }: {
+  context: { dayKey: string; staffId: string } | null;
+  staffMembers: (StaffMember | DatabaseStaffMember)[];
+  onClose: () => void;
+  onApply: (startTime: string, endTime: string) => void;
+}) {
+  const [startTime, setStartTime] = useState('09:15');
+  const [endTime, setEndTime] = useState('18:00');
+
+  const staffName = context ? (staffMembers.find(s => s.id === context.staffId)?.name || STAFF_MEMBERS.find(s => s.id === context.staffId)?.name) : '';
+  const dateLabel = context ? format(new Date(context.dayKey + 'T00:00:00'), 'EEE, MMM d') : '';
+
+  // Calculate work hours
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+  const workHours = endMinutes > startMinutes
+    ? Math.round((endMinutes - startMinutes) / 60 * 10) / 10
+    : 0;
+
+  // Validation
+  const isValid = endMinutes > startMinutes
+    && startMinutes >= timeToMinutes('09:15')
+    && endMinutes <= timeToMinutes('21:45');
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl p-4 md:p-6 w-full max-w-sm">
+        <div className="flex items-center gap-2 mb-3 md:mb-4">
+          <Clock className="text-blue-600 w-5 h-5 md:w-6 md:h-6" />
+          <h3 className="text-base md:text-lg font-bold text-gray-800">Custom Shift Time</h3>
+        </div>
+        <p className="text-xs md:text-sm text-gray-600 mb-3">
+          <strong>{staffName}</strong> · {dateLabel}
+        </p>
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">Start</label>
+              <input
+                type="time"
+                value={startTime}
+                min="09:15"
+                max="21:45"
+                onChange={e => setStartTime(e.target.value)}
+                className="w-full p-2 border border-gray-300 text-gray-900 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-gray-500 mb-1">End</label>
+              <input
+                type="time"
+                value={endTime}
+                min="09:15"
+                max="21:45"
+                onChange={e => setEndTime(e.target.value)}
+                className="w-full p-2 border border-gray-300 text-gray-900 rounded-md focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+          </div>
+          <div className="text-sm text-gray-700">
+            Work Hours: <strong className="font-mono">{workHours > 0 ? `${workHours}h` : '—'}</strong>
+          </div>
+          {!isValid && startTime && endTime && (
+            <p className="text-xs text-red-500">End time must be after start time, within 09:15–21:45</p>
+          )}
+        </div>
+        <div className="flex gap-2 md:gap-3 mt-4 md:mt-6">
+          <button onClick={onClose} className="w-full p-2 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300 text-sm">Cancel</button>
+          <button
+            onClick={() => onApply(startTime, endTime)}
+            disabled={!isValid}
+            className="flex-1 px-3 md:px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReplacementCard({ replacement }: { replacement: ReplacementShift }) {
   return (
     <div className="bg-gray-100 border-l-4 border-gray-400 rounded-lg p-1.5 md:p-2 text-[10px] md:text-xs text-gray-700">
@@ -1266,6 +1428,7 @@ function ReplacementCard({ replacement }: { replacement: ReplacementShift }) {
 // Helper function for shift labels
 function getShiftLabel(shift: ShiftDefinition | null): string {
   if (!shift) return 'Day Off';
+  if (shift.type === 'custom') return 'Custom Shift';
   if (shift.type === '11h') return 'Full Day Shift';
   return shift.timing === 'early' ? 'Early Shift' : 'Late Shift';
 }
@@ -1382,6 +1545,15 @@ function MobileView({
     }
   };
 
+  // Handle custom time selection from bottom sheet
+  const handleCustomTimeSelect = (startTime: string, endTime: string) => {
+    if (selectedStaffForEdit) {
+      const key = makeCustomTimeKey(startTime, endTime);
+      onEditBufferChange(selectedStaffForEdit.dayKey, selectedStaffForEdit.staff.id, key);
+      setSelectedStaffForEdit(null);
+    }
+  };
+
   // Handle maternity leave selection from bottom sheet (opens modal)
   const handleMaternitySelect = () => {
     if (selectedStaffForEdit) {
@@ -1411,6 +1583,7 @@ function MobileView({
     if (bufferValue.startsWith('leave_')) {
       return bufferValue.split('_')[1].toUpperCase();
     }
+    // Pass custom keys through as-is
     return bufferValue;
   };
 
@@ -1497,6 +1670,7 @@ function MobileView({
           currentValue={getCurrentShiftValue()}
           onSelect={handleShiftSelect}
           onMaternitySelect={handleMaternitySelect}
+          onCustomTimeSelect={handleCustomTimeSelect}
         />
       )}
     </div>
@@ -1648,6 +1822,13 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
       displayShift = null;
       displayIsLeave = true;
       displayLeaveType = editValue.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML' | 'MAT';
+    } else if (isCustomTimeKey(editValue)) {
+      const parsed = parseCustomTimeKey(editValue);
+      if (parsed) {
+        displayShift = { type: 'custom', timing: null, ...parsed };
+      }
+      displayIsLeave = false;
+      displayLeaveType = undefined;
     } else if (SHIFT_DEFINITIONS[editValue]) {
       displayShift = SHIFT_DEFINITIONS[editValue];
       displayIsLeave = false;

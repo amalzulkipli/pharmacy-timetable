@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
             shiftType: draft.shiftType,
             isLeave: draft.isLeave,
             leaveType: draft.leaveType,
+            customStartTime: draft.customStartTime,
+            customEndTime: draft.customEndTime,
+            customWorkHours: draft.customWorkHours,
           },
         });
 

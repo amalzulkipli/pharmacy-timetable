@@ -55,8 +55,21 @@ export async function GET(request: NextRequest) {
       const dateKey = format(override.date, 'yyyy-MM-dd');
       if (!overridesByDate[dateKey]) overridesByDate[dateKey] = {};
 
+      let shift = null;
+      if (override.shiftType) {
+        shift = SHIFT_DEFINITIONS[override.shiftType];
+      } else if (override.customStartTime && override.customEndTime && override.customWorkHours != null) {
+        shift = {
+          type: 'custom',
+          timing: null,
+          startTime: override.customStartTime,
+          endTime: override.customEndTime,
+          workHours: override.customWorkHours,
+        };
+      }
+
       overridesByDate[dateKey][override.staffId] = {
-        shift: override.shiftType ? SHIFT_DEFINITIONS[override.shiftType] : null,
+        shift,
         isLeave: override.isLeave,
         leaveType: override.leaveType,
       };
@@ -136,8 +149,18 @@ export async function POST(request: NextRequest) {
           };
 
           let shiftType: string | null = null;
+          let customStartTime: string | null = null;
+          let customEndTime: string | null = null;
+          let customWorkHours: number | null = null;
+
           if (override.shift) {
             shiftType = findShiftKey(override.shift);
+            if (!shiftType) {
+              // Custom shift — store raw times
+              customStartTime = override.shift.startTime;
+              customEndTime = override.shift.endTime;
+              customWorkHours = override.shift.workHours;
+            }
           }
 
           // Check if there's an existing MAT entry - don't overwrite it unless explicitly setting MAT
@@ -159,6 +182,9 @@ export async function POST(request: NextRequest) {
               shiftType,
               isLeave: override.isLeave || false,
               leaveType: override.leaveType || null,
+              customStartTime: shiftType ? null : customStartTime,
+              customEndTime: shiftType ? null : customEndTime,
+              customWorkHours: shiftType ? null : customWorkHours,
             },
             create: {
               date,
@@ -166,6 +192,9 @@ export async function POST(request: NextRequest) {
               shiftType,
               isLeave: override.isLeave || false,
               leaveType: override.leaveType || null,
+              customStartTime: shiftType ? null : customStartTime,
+              customEndTime: shiftType ? null : customEndTime,
+              customWorkHours: shiftType ? null : customWorkHours,
             },
           });
         }
