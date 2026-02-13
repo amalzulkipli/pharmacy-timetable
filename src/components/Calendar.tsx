@@ -1698,7 +1698,7 @@ function MobileHeader({
       <div className="flex items-center gap-2">
         <AldeIcon />
         <h1 className="text-lg font-bold text-[#37352f]">
-          {isEditMode ? 'Editing...' : 'Alde ST Timetable'}
+          {isEditMode ? 'Editing...' : 'Farmasi Alde ST Timetable'}
         </h1>
         {/* Draft badge - only show in admin mode when has draft and not editing */}
         {isAdminMode && hasDraft && !isEditMode && (

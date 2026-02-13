@@ -36,7 +36,7 @@ export default function AppHeader({
           {/* Left: Logo/Title */}
           <div className="flex items-center gap-2">
             <AldeIcon />
-            <span className="font-bold text-lg text-gray-900">Alde ST Timetable</span>
+            <span className="font-bold text-lg text-gray-900">Farmasi Alde ST Timetable</span>
             {!isOnline && (
               <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full ml-2">
                 Offline
