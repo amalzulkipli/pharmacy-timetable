@@ -969,7 +969,7 @@ function CalendarToolbar({ selectedMonth, setSelectedMonth, selectedYear, setSel
                   {copiedWeekNumber && onClearClipboard && (
                     <ClipboardBadge weekNumber={copiedWeekNumber} onClear={onClearClipboard} />
                   )}
-                  <button onClick={onSaveChanges} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                  <button onClick={onSaveChanges} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors">
                     <Save size={14}/>
                     <span className="hidden sm:inline">Save Draft</span>
                   </button>
@@ -983,7 +983,7 @@ function CalendarToolbar({ selectedMonth, setSelectedMonth, selectedYear, setSel
                   <span className="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded-full hidden sm:inline">
                     Unpublished
                   </span>
-                  <button onClick={onPublish} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 transition-colors">
+                  <button onClick={onPublish} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors">
                     <Check size={14}/>
                     <span className="hidden sm:inline">Publish</span>
                   </button>
@@ -991,14 +991,14 @@ function CalendarToolbar({ selectedMonth, setSelectedMonth, selectedYear, setSel
                     <Trash2 size={14}/>
                     <span className="hidden sm:inline">Discard</span>
                   </button>
-                  <button onClick={onEnterEditMode} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                  <button onClick={onEnterEditMode} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors">
                     <Edit size={14}/>
                     <span className="hidden sm:inline">Edit</span>
                   </button>
                 </>
               ) : (
                 /* State 3: No draft, not editing - Show Edit button */
-                <button onClick={onEnterEditMode} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+                <button onClick={onEnterEditMode} className="flex items-center gap-1.5 px-3 py-1.5 bg-brand text-white rounded-md text-sm font-medium hover:bg-brand-dark transition-colors">
                   <Edit size={14}/>
                   <span className="hidden sm:inline">Edit Mode</span>
                 </button>

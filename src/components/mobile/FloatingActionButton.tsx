@@ -61,7 +61,7 @@ export default function FloatingActionButton({
             {/* Publish button */}
             <button
               onClick={handlePublish}
-              className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-4 py-2.5 bg-brand text-white rounded-full shadow-lg hover:bg-brand-dark transition-colors text-sm font-medium"
             >
               <Check size={18} />
               <span>Publish</span>

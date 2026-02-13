@@ -138,7 +138,7 @@ export default function MobileBottomBar({
           </button>
           <button
             onClick={onPublish}
-            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 active:bg-green-800 transition-colors"
+            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-brand text-white rounded-xl font-medium text-sm hover:bg-brand-dark active:bg-brand-dark transition-colors"
           >
             <Check size={18} />
             <span>Publish</span>

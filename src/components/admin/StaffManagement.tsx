@@ -214,7 +214,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
         {!showAddForm && !editingId && (
           <button
             onClick={() => setShowAddForm(true)}
-            className={`flex items-center justify-center bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 ${
+            className={`flex items-center justify-center bg-brand text-white font-medium rounded-lg hover:bg-brand-dark ${
               isMobile ? 'px-4 py-3 text-sm min-h-[48px]' : 'px-3 py-2 text-sm'
             }`}
           >
@@ -329,7 +329,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className={`flex items-center justify-center bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 ${
+              className={`flex items-center justify-center bg-brand text-white font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50 ${
                 isMobile ? 'px-4 py-3 text-base min-h-[48px] order-1' : 'px-3 py-2 text-sm'
               }`}
             >
