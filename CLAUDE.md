@@ -217,3 +217,30 @@ Admin logout button visibility is controlled via mobile-specific styling in `Cal
 ## Testing
 
 No test framework is currently configured. `npm run lint` runs ESLint as the only automated check.
+
+## Deployment (Dokploy on Hetzner VPS)
+
+- **URL:** https://st.farmasialde.com/timetable
+- **Docker service:** `fasttimetable-main-xfkjbh`
+- **Database volume:** `pharmacy_data` → mounted at `/app/prisma/`
+- **DB on host:** `/var/lib/docker/volumes/pharmacy_data/_data/pharmacy.db`
+- **Auto-deploy:** GitHub webhook → Dokploy (push to `main` triggers build + deploy)
+- **Backup:** Daily at 2:00 AM via `/root/scripts/backup-pharmacy-timetable.sh`, 7-day retention
+
+### Production Environment Variables (set in Dokploy, not .env)
+
+```bash
+NEXTAUTH_URL=https://st.farmasialde.com    # WITHOUT /timetable (see quirks below)
+NEXTAUTH_SECRET=<secret>
+ADMIN_PASSWORD_HASH=<base64-encoded-bcrypt>
+DATABASE_URL=file:./pharmacy.db
+NODE_ENV=production
+HOSTNAME=0.0.0.0
+```
+
+### Production Quirks
+
+- **NextAuth v5 + basePath:** Do NOT set `basePath` in NextAuth config or include `/timetable` in `NEXTAUTH_URL`. Next.js basePath already strips `/timetable` before the request reaches NextAuth. Setting either causes `UnknownAction` errors.
+- **Health check:** Must use `http://0.0.0.0:3000` not `http://localhost:3000` in Dockerfile. Alpine Linux in Docker Swarm doesn't resolve localhost to 0.0.0.0.
+- **Auth redirect:** The `redirect` callback in `src/lib/auth.ts` handles sending users to `/timetable` after login, since NextAuth defaults to redirecting to `/`.
+- **Volume mount:** Ensure no trailing spaces in Dokploy volume mount path — the UI can accidentally include them.
