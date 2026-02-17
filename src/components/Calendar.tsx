@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, getStaffColors } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
@@ -98,6 +98,8 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   const [schedule, setSchedule] = useState<MonthSchedule | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editBuffer, setEditBuffer] = useState<Record<string, Record<string, string>>>({});
+  // Snapshot of editBuffer when entering edit mode (to detect overflow changes)
+  const originalEditBufferRef = useRef<Record<string, Record<string, string>>>({});
 
   // Clipboard state for copied week (copy/paste feature)
   const [copiedWeek, setCopiedWeek] = useState<{
@@ -140,6 +142,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   // Also fetch previous month's overrides for days shown from adjacent month
   const {
     overrides: prevMonthOverrides,
+    saveOverrides: savePrevMonth,
   } = useScheduleOverridesDB({
     year: prevYear,
     month: prevMonth,
@@ -149,6 +152,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   // Also fetch next month's overrides for days shown from adjacent month
   const {
     overrides: nextMonthOverrides,
+    saveOverrides: saveNextMonth,
   } = useScheduleOverridesDB({
     year: nextYear,
     month: nextMonth,
@@ -367,6 +371,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       });
     });
     setEditBuffer(buffer);
+    originalEditBufferRef.current = JSON.parse(JSON.stringify(buffer));
     setIsEditMode(true);
   };
 
@@ -405,11 +410,60 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       });
     });
     setManualOverrides(newOverrides);
-    // Save overrides to database (with localStorage fallback)
-    const result = await saveOverrides(newOverrides);
+
+    // Partition overrides by month: current month saved normally,
+    // overflow months (prev/next) saved separately so each gets its own DraftMonth
+    const currentMonthOverrides: Record<string, OverrideData> = {};
+    const prevOverflowChanges: Record<string, OverrideData> = {};
+    const nextOverflowChanges: Record<string, OverrideData> = {};
+
+    Object.keys(newOverrides).forEach(dayKey => {
+      const [y, m] = dayKey.split('-').map(Number);
+      if (y === selectedYear && m === selectedMonth) {
+        currentMonthOverrides[dayKey] = newOverrides[dayKey];
+      } else if (y === prevYear && m === prevMonth) {
+        prevOverflowChanges[dayKey] = newOverrides[dayKey];
+      } else if (y === nextYear && m === nextMonth) {
+        nextOverflowChanges[dayKey] = newOverrides[dayKey];
+      }
+    });
+
+    // Save current month
+    const result = await saveOverrides(currentMonthOverrides);
     if (!result.success) {
       console.warn('Saved locally, will sync when online:', result.error);
     }
+
+    // Save overflow prev month entries only if user actually changed them
+    const changedPrevDays = Object.keys(prevOverflowChanges).filter(dayKey => {
+      const orig = originalEditBufferRef.current[dayKey];
+      const curr = editBuffer[dayKey];
+      if (!orig || !curr) return true;
+      return JSON.stringify(orig) !== JSON.stringify(curr);
+    });
+    if (changedPrevDays.length > 0) {
+      const merged = { ...prevMonthOverrides };
+      changedPrevDays.forEach(dayKey => {
+        merged[dayKey] = prevOverflowChanges[dayKey];
+      });
+      await savePrevMonth(merged);
+    }
+
+    // Save overflow next month entries only if user actually changed them
+    const changedNextDays = Object.keys(nextOverflowChanges).filter(dayKey => {
+      const orig = originalEditBufferRef.current[dayKey];
+      const curr = editBuffer[dayKey];
+      if (!orig || !curr) return true;
+      return JSON.stringify(orig) !== JSON.stringify(curr);
+    });
+    if (changedNextDays.length > 0) {
+      const merged = { ...nextMonthOverrides };
+      changedNextDays.forEach(dayKey => {
+        merged[dayKey] = nextOverflowChanges[dayKey];
+      });
+      await saveNextMonth(merged);
+    }
+
     setIsEditMode(false);
   };
 
