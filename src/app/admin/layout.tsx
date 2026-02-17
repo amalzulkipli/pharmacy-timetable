@@ -1,15 +1,21 @@
-'use client';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import AdminLayoutClient from './AdminLayoutClient';
 
-import { AuthProvider } from '@/context/AuthContext';
-
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
+  if (!session) {
+    redirect('/login');
+  }
+
   return (
-    <AuthProvider>
+    <AdminLayoutClient>
       {children}
-    </AuthProvider>
+    </AdminLayoutClient>
   );
 }
