@@ -421,9 +421,10 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       const [y, m] = dayKey.split('-').map(Number);
       if (y === selectedYear && m === selectedMonth) {
         currentMonthOverrides[dayKey] = newOverrides[dayKey];
-      } else if (y === prevYear && m === prevMonth) {
+      } else if (y === prevYear && m === prevMonth && editBuffer[dayKey]) {
+        // Only include overflow days that were visible in the calendar grid
         prevOverflowChanges[dayKey] = newOverrides[dayKey];
-      } else if (y === nextYear && m === nextMonth) {
+      } else if (y === nextYear && m === nextMonth && editBuffer[dayKey]) {
         nextOverflowChanges[dayKey] = newOverrides[dayKey];
       }
     });
@@ -438,7 +439,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     const changedPrevDays = Object.keys(prevOverflowChanges).filter(dayKey => {
       const orig = originalEditBufferRef.current[dayKey];
       const curr = editBuffer[dayKey];
-      if (!orig || !curr) return true;
+      if (!orig || !curr) return !!orig !== !!curr; // only changed if one exists but not other
       return JSON.stringify(orig) !== JSON.stringify(curr);
     });
     if (changedPrevDays.length > 0) {
@@ -453,7 +454,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     const changedNextDays = Object.keys(nextOverflowChanges).filter(dayKey => {
       const orig = originalEditBufferRef.current[dayKey];
       const curr = editBuffer[dayKey];
-      if (!orig || !curr) return true;
+      if (!orig || !curr) return !!orig !== !!curr;
       return JSON.stringify(orig) !== JSON.stringify(curr);
     });
     if (changedNextDays.length > 0) {
