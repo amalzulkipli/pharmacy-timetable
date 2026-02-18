@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
-import { STAFF_MEMBERS, SHIFT_DEFINITIONS, getStaffColors } from '../staff-data';
+import { STAFF_MEMBERS, SHIFT_DEFINITIONS, RAMADAN_SHIFT_KEYS, getStaffColors } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
 import { useStaffMembers, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
@@ -1232,7 +1232,13 @@ function ShiftDropdown({ value, onChange }: { value: string, onChange: (value: s
          <option value="add_replacement">Add Replacement...</option>
       </optgroup>
       <optgroup label="Shifts">
-        {Object.keys(SHIFT_DEFINITIONS).map(key => {
+        {Object.keys(SHIFT_DEFINITIONS).filter(key => !RAMADAN_SHIFT_KEYS.has(key)).map(key => {
+          const shift = SHIFT_DEFINITIONS[key];
+          return <option key={key} value={key}>{`${shift.type} (${shift.startTime}-${shift.endTime})`}</option>
+        })}
+      </optgroup>
+      <optgroup label="Ramadan">
+        {Object.keys(SHIFT_DEFINITIONS).filter(key => RAMADAN_SHIFT_KEYS.has(key)).map(key => {
           const shift = SHIFT_DEFINITIONS[key];
           return <option key={key} value={key}>{`${shift.type} (${shift.startTime}-${shift.endTime})`}</option>
         })}
