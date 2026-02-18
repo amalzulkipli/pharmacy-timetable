@@ -41,11 +41,20 @@ ADMIN_PASSWORD_HASH="<base64-encoded-bcrypt-hash>"
 ## Architecture
 
 ### Tech Stack
-- **Framework:** Next.js 15.5.11 (App Router, standalone output)
-- **Database:** Prisma 6.19.1 with SQLite (`prisma/pharmacy.db`)
+- **Framework:** Next.js 15 (App Router, standalone output)
+- **Database:** Prisma 6 with SQLite (`prisma/pharmacy.db`)
 - **UI:** React 19, TypeScript, Tailwind CSS v4
 - **Date Utilities:** date-fns
 - **Icons:** lucide-react
+
+### Base Path
+
+The app is deployed at `/timetable` via `basePath: '/timetable'` in `next.config.ts`. This affects:
+- **All routes:** Pages are at `/timetable/`, `/timetable/admin`, `/timetable/login`
+- **API calls from client:** Browser `fetch('/api/...')` does NOT auto-prepend basePath. Use `apiUrl('/api/...')` from `src/lib/api.ts` for all client-side API calls.
+- **NextAuth:** `SessionProvider` must set `basePath="/timetable/api/auth"` (see Providers.tsx)
+- **Middleware:** `src/middleware.ts` path matching uses paths *without* basePath (Next.js strips it before middleware runs)
+- **Links:** `next/link` and `router.push()` auto-prepend basePath. Do NOT manually add `/timetable` to these.
 
 ### Database Schema (`prisma/schema.prisma`)
 
@@ -78,6 +87,7 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 
 **Key Files:**
 - `src/lib/schedule-generator.ts` - Scheduling algorithm with ISO week pattern selection
+- `src/lib/api.ts` - `apiUrl()` helper that prepends basePath to API fetch calls
 - `src/staff-data.ts` - SHIFT_PATTERNS, SHIFT_DEFINITIONS, STAFF_MEMBERS, AVATAR_COLORS
 - `src/types/schedule.ts` - TypeScript interfaces
 
@@ -89,7 +99,7 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 | `/login` | Admin login page (modal style with blurred background) | Public |
 | `/admin` | Admin dashboard with tabbed interface (Timetable/Leave/Staff) | Protected |
 
-**Route Protection:** `src/middleware.ts` protects `/admin/*` routes and most API routes using NextAuth v5 JWT sessions. Only `GET /api/overrides` (schedule data) is publicly accessible without auth. All other API requests (including GET to staff/leave endpoints) require authentication. Redirects to `/login` for admin pages, returns 401 JSON for API routes.
+**Route Protection:** `src/middleware.ts` protects `/admin/*` routes and most API routes using NextAuth v5 JWT sessions. Admin layout (`src/app/admin/layout.tsx`) is a **server component** that calls `auth()` as a second defense layer — do NOT convert it to `'use client'` or remove the `auth()` check, as middleware alone can be bypassed for statically prerendered pages in standalone Docker deployments. Only `GET /api/overrides` (schedule data) is publicly accessible without auth. All other API requests (including GET to staff/leave endpoints) require authentication. Redirects to `/login` for admin pages, returns 401 JSON for API routes.
 
 **Login Flow:** Users can login via:
 1. Click login icon on calendar → shows LoginModal overlay with blurred background
@@ -162,10 +172,15 @@ Main UI (~1400 lines), accepts `mode` prop:
 
 11. **New Staff Shift Patterns:** Staff not in the hardcoded `SHIFT_PATTERNS` (legacy staff) use `DEFAULT_SHIFT_PATTERNS` in `staff-data.ts`, which provides role-based defaults ("Pharmacist" or "Assistant Pharmacist") for both pattern 0 and pattern 1.
 
+12. **manualOverrides vs editBuffer:** `manualOverrides` merges data from 3 months (prev/current/next) for rendering. `editBuffer` contains only days visible in the calendar grid. When saving, use `editBuffer` keys to determine which overflow days the user can actually see and edit — never iterate `manualOverrides` keys for adjacent month logic.
+
+13. **Shift Categories in Dropdowns:** `RAMADAN_SHIFT_KEYS` (type-safe `Set<keyof typeof SHIFT_DEFINITIONS>`) separates Ramadan shifts into their own dropdown category. Desktop uses `<optgroup>` filtering, mobile uses section filtering in `ShiftPickerBottomSheet.tsx`. To add a new category: define shifts in `SHIFT_DEFINITIONS`, create a `Set` of keys, filter both desktop (`Calendar.tsx` ShiftDropdown) and mobile (`ShiftPickerBottomSheet.tsx`) pickers.
+
 ### Draft/Publish Workflow
 
 Schedule changes follow a draft-first pattern:
 - **Editing:** All changes save to `ScheduleDraft` table (not immediately published)
+- **Overflow days:** Calendar grid shows days from adjacent months (e.g., Mar 1 in Feb view). `handleSaveChanges` partitions edits by actual month and saves each via its own hook (`savePrevMonth`/`saveNextMonth`), so each month gets its own `DraftMonth` record. Only overflow days present in `editBuffer` (visible in grid) are considered — `manualOverrides` contains ALL adjacent month data and must NOT be used unfiltered for overflow saves.
 - **Tracking:** `DraftMonth` records which months have unpublished changes
 - **Publishing:** Admin publishes drafts → copies to `ScheduleOverride`, updates leave balances
 - **Discarding:** Admin can discard drafts → deletes from `ScheduleDraft`, clears `DraftMonth`
