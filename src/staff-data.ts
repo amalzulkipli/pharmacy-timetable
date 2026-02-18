@@ -150,7 +150,24 @@ export const SHIFT_DEFINITIONS: { [key: string]: ShiftDefinition } = {
     endTime: "21:45",
     workHours: 7,
   },
+  "9h_early_ramadan": {
+    type: "8h+1h",
+    timing: "early",
+    startTime: "09:15",
+    endTime: "17:15",
+    workHours: 8,
+  },
+  "11h_ramadan": {
+    type: "11h",
+    timing: null,
+    startTime: "09:45",
+    endTime: "21:45",
+    workHours: 11,
+  },
 }
+
+// Keys for Ramadan-specific shifts (used to separate them in dropdown UI)
+export const RAMADAN_SHIFT_KEYS = new Set(["9h_early_ramadan", "11h_ramadan"]);
 
 // Pattern 0 (Odd ISO Weeks)
 const PATTERN_0: ShiftPattern = {
