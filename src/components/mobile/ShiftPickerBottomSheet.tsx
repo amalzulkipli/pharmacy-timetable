@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, X, Clock, Calendar, Stethoscope, Baby } from 'lucide-react';
-import { SHIFT_DEFINITIONS, AVATAR_COLORS } from '@/staff-data';
+import { Check, X, Clock, Calendar, Stethoscope, Baby, Moon } from 'lucide-react';
+import { SHIFT_DEFINITIONS, RAMADAN_SHIFT_KEYS, AVATAR_COLORS } from '@/staff-data';
 import type { StaffMember } from '@/types/schedule';
 
 interface ShiftPickerBottomSheetProps {
@@ -178,7 +178,7 @@ export default function ShiftPickerBottomSheet({
               <Clock className="h-4 w-4 text-gray-400" />
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Shifts</span>
             </div>
-            {Object.entries(SHIFT_DEFINITIONS).map(([key, shift]) => {
+            {Object.entries(SHIFT_DEFINITIONS).filter(([key]) => !RAMADAN_SHIFT_KEYS.has(key)).map(([key, shift]) => {
               const isSelected = currentValue === key;
               const label = shift.timing
                 ? `${shift.type} ${shift.timing.charAt(0).toUpperCase() + shift.timing.slice(1)}`
@@ -210,6 +210,49 @@ export default function ShiftPickerBottomSheet({
                     </div>
                   </div>
                   {isSelected && <Check className="h-5 w-5 text-blue-600" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Ramadan Section */}
+          <div className="px-2">
+            <div className="flex items-center gap-2 px-4 py-2 mt-2">
+              <Moon className="h-4 w-4 text-amber-400" />
+              <span className="text-xs font-medium text-amber-600 uppercase tracking-wide">Ramadan</span>
+            </div>
+            {Object.entries(SHIFT_DEFINITIONS).filter(([key]) => RAMADAN_SHIFT_KEYS.has(key)).map(([key, shift]) => {
+              const isSelected = currentValue === key;
+              const label = shift.timing
+                ? `${shift.type} ${shift.timing.charAt(0).toUpperCase() + shift.timing.slice(1)}`
+                : shift.type;
+
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleSelect(key)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+                    isSelected
+                      ? 'bg-amber-50 text-amber-900'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      isSelected ? 'bg-amber-100' : 'bg-gray-100'
+                    }`}>
+                      <span className={`text-sm font-medium ${isSelected ? 'text-amber-700' : 'text-gray-600'}`}>
+                        {shift.workHours}h
+                      </span>
+                    </div>
+                    <div className="text-left">
+                      <span className="font-medium">{label}</span>
+                      <span className="text-sm text-gray-500 ml-2">
+                        {shift.startTime} - {shift.endTime}
+                      </span>
+                    </div>
+                  </div>
+                  {isSelected && <Check className="h-5 w-5 text-amber-600" />}
                 </button>
               );
             })}
