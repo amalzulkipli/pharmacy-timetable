@@ -1197,7 +1197,7 @@ function ShiftDisplay({ staffShift, staffId, colorIndex }: { staffShift: DaySche
       {/* Time text row */}
       <div className="flex items-center justify-between font-mono text-[9px] md:text-xs">
         <span className="opacity-80">{shift.startTime}-{shift.endTime}</span>
-        <span className="font-semibold">({shift.type})</span>
+        <span className="font-semibold">({shift.type === 'custom' ? `${shift.workHours}h` : shift.type})</span>
       </div>
       {/* Timeline bar */}
       <div className="mt-1 md:mt-1.5 h-1.5 md:h-2 bg-white/50 rounded-full relative overflow-hidden">
@@ -1980,7 +1980,7 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
         {/* Hours Badge + Edit indicator */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${badgeClasses}`}>
-            {displayShift?.type}
+            {displayShift?.type === 'custom' ? `${displayShift.workHours}h` : displayShift?.type}
           </span>
           {isEditMode && (
             <ChevronDown size={18} className="text-blue-500" />
