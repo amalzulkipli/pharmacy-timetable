@@ -167,7 +167,7 @@ export const SHIFT_DEFINITIONS: { [key: string]: ShiftDefinition } = {
 }
 
 // Keys for Ramadan-specific shifts (used to separate them in dropdown UI)
-export const RAMADAN_SHIFT_KEYS = new Set(["9h_early_ramadan", "11h_ramadan"]);
+export const RAMADAN_SHIFT_KEYS: Set<keyof typeof SHIFT_DEFINITIONS> = new Set(["9h_early_ramadan", "11h_ramadan"]);
 
 // Pattern 0 (Odd ISO Weeks)
 const PATTERN_0: ShiftPattern = {
