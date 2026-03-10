@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
           // Handle staff schedule draft
           const override = value as {
-            shift?: { startTime: string; endTime: string; workHours: number };
+            shift?: { type?: string; startTime: string; endTime: string; workHours: number };
             isLeave: boolean;
             leaveType?: string;
           };
@@ -154,12 +154,19 @@ export async function POST(request: NextRequest) {
           let customWorkHours: number | null = null;
 
           if (override.shift) {
-            shiftType = findShiftKey(override.shift);
-            if (!shiftType) {
-              // Custom shift — store raw times
+            if (override.shift.type === 'custom') {
+              // Explicitly custom — always store as custom fields, never match to a named shift
               customStartTime = override.shift.startTime;
               customEndTime = override.shift.endTime;
               customWorkHours = override.shift.workHours;
+            } else {
+              shiftType = findShiftKey(override.shift);
+              if (!shiftType) {
+                // Unknown shift — store raw times as custom
+                customStartTime = override.shift.startTime;
+                customEndTime = override.shift.endTime;
+                customWorkHours = override.shift.workHours;
+              }
             }
           }
 
