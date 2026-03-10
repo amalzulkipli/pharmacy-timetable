@@ -105,8 +105,6 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 1. Click login icon on calendar → shows LoginModal overlay with blurred background
 2. Direct access to `/admin/*` → redirects to `/login` page (also modal style)
 
-**Authentication:** Uses NextAuth v5 with Credentials provider. Password is stored as bcrypt hash in `ADMIN_PASSWORD_HASH` environment variable. Session is JWT-based with 24-hour expiry.
-
 ### API Routes
 
 | Endpoint | Purpose |
@@ -160,7 +158,7 @@ Main UI (~2000 lines), accepts `mode` prop:
 
 5. **Staff Colors:** `STAFF_COLOR_PALETTE` in `staff-data.ts` provides 10 colors (indices 0-9). Legacy staff (fatimah, siti, pah, amal) use fixed indices 0-3 via `LEGACY_STAFF_COLOR_INDEX`. New staff are auto-assigned indices 4+. Use `getStaffColors(staffId, colorIndex)` to get the full color object (card, avatar, bar, hex). Legacy exports `STAFF_COLORS` and `AVATAR_COLORS` maintained for backward compatibility.
 
-6. **Public Holidays:** Stored in database, used for RL calculation. On holidays, all staff marked as off.
+6. **Public Holidays:** Hardcoded in `PUBLIC_HOLIDAYS` array in `schedule-generator.ts`, seeded to database via `POST /api/migrate`. Used for RL calculation (staff earn RL when holiday falls on their off day). On holidays, all staff marked as off.
 
 7. **Schedule Generation:** Base patterns are fixed in SHIFT_PATTERNS. The algorithm applies leave constraints, validates coverage, and adjusts OFF days to maintain the 2-consecutive-day rule while ensuring pharmacy coverage.
 
@@ -220,6 +218,7 @@ When looking up shift patterns:
 - `getISOWeek()` from date-fns determines week number
 - ISO week numbers differ from calendar week numbers (week starts Monday, week 1 contains Jan 4)
 - Pattern matching in `findShiftKey()` uses startTime + endTime + workHours tuple
+- **Custom shifts bypass `findShiftKey()`:** When `shift.type === 'custom'`, the API stores raw times in `customStartTime`/`customEndTime`/`customWorkHours` fields instead of matching to a named `shiftType`. This prevents collisions where custom times accidentally match a named shift (e.g., custom 09:15-17:15 matching `9h_early_ramadan`).
 
 ## Mobile Responsiveness
 
