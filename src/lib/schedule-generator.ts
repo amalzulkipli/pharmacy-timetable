@@ -26,6 +26,7 @@ export const PUBLIC_HOLIDAYS: PublicHoliday[] = [
   { date: '2025-09-16', name: 'Hari Malaysia' },
   { date: '2025-12-11', name: 'Sultan Selangor\'s Birthday' },
   // 2026
+  { date: '2026-03-20', name: 'Hari Raya Aidilfitri' },
   { date: '2026-03-21', name: 'Hari Raya Aidilfitri' },
   { date: '2026-03-22', name: 'Hari Raya Aidilfitri' },
   { date: '2026-03-23', name: 'Hari Raya Aidilfitri' },
@@ -33,7 +34,6 @@ export const PUBLIC_HOLIDAYS: PublicHoliday[] = [
   { date: '2026-05-27', name: 'Hari Raya Aidiladha (Haji)' },
   { date: '2026-05-28', name: 'Hari Raya Aidiladha (Haji)' },
   { date: '2026-06-01', name: 'Agong Birthday' },
-  { date: '2026-06-17', name: 'Awal Muharram (Maal Hijrah)' },
   { date: '2026-08-31', name: 'National Day (Merdeka)' },
   { date: '2026-09-16', name: 'Malaysia Day' },
   { date: '2026-12-11', name: 'Sultan of Selangor\'s Birthday' },

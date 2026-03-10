@@ -140,9 +140,9 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 
 ### Calendar Component (`src/components/Calendar.tsx`)
 
-Main UI (~1400 lines), accepts `mode` prop:
+Main UI (~2000 lines), accepts `mode` prop:
 - `mode="public"` - Read-only view for regular staff (used at `/`)
-- `mode="admin"` - Full edit mode with summaries, alerts, data manager (used at `/admin/schedule`)
+- `mode="admin"` - Full edit mode with summaries, alerts, data manager (used at `/admin` Timetable tab)
 - 7-column CSS Grid (Mon-Sun)
 - CSV export (admin only)
 - Mobile responsive with `MobileStaffCard`
