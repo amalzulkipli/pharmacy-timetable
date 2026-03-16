@@ -116,6 +116,29 @@ export function useStaffMembers() {
 }
 
 /**
+ * Check if a single staff member is active on a given date.
+ * Returns true if date falls within [startDate, endDate) range.
+ */
+export function isStaffActiveOnDate(staff: DatabaseStaffMember, date: Date): boolean {
+  const checkDate = new Date(date);
+  checkDate.setHours(0, 0, 0, 0);
+
+  if (staff.startDate) {
+    const start = new Date(staff.startDate);
+    start.setHours(0, 0, 0, 0);
+    if (checkDate < start) return false;
+  }
+
+  if (staff.endDate) {
+    const end = new Date(staff.endDate);
+    end.setHours(0, 0, 0, 0);
+    if (checkDate >= end) return false;
+  }
+
+  return true;
+}
+
+/**
  * Filter staff members who are active on a given date
  * Staff with no startDate are considered always active (legacy staff)
  * Staff with startDate only appear from that date forward

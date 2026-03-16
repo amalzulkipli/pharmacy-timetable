@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, RAMADAN_SHIFT_KEYS, getStaffColors } from '../staff-data';
 import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
-import { useStaffMembers, type DatabaseStaffMember } from '../hooks/useStaff';
+import { useStaffMembers, isStaffActiveOnDate, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
 import AldeIcon from './AldeIcon';
@@ -298,7 +298,8 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 
   useEffect(() => {
     // Apply overrides to the base schedule
-    const applyOverrides = (baseSchedule: MonthSchedule, overrides: Record<string, OverrideData>): MonthSchedule => {
+    const applyOverrides = (baseSchedule: MonthSchedule, overrides: Record<string, OverrideData>, staffList: DatabaseStaffMember[]): MonthSchedule => {
+      const staffMap = new Map(staffList.map(s => [s.id, s]));
       const updatedDays = baseSchedule.days.map(day => {
         const dayKey = format(day.date, 'yyyy-MM-dd');
         const finalDay = { ...day, staffShifts: { ...day.staffShifts }, replacementShifts: day.replacementShifts ? [...day.replacementShifts] : [] };
@@ -313,6 +314,11 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
             }
           } else {
             const staffId = staffIdOrAction;
+            // Skip overrides for staff who are not active on this date (endDate/startDate)
+            const staffMember = staffMap.get(staffId);
+            if (staffMember && !isStaffActiveOnDate(staffMember, day.date)) {
+              return;
+            }
             const override = overrides[dayKey][staffId] as { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' };
             if (override && typeof override === 'object' && !Array.isArray(override)) {
               finalDay.staffShifts[staffId] = {
@@ -331,7 +337,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
     };
 
     const baseSchedule = generateMonthSchedule(selectedMonth, selectedYear, dynamicStaff);
-    const updatedSchedule = applyOverrides(baseSchedule, manualOverrides);
+    const updatedSchedule = applyOverrides(baseSchedule, manualOverrides, dynamicStaff);
     setSchedule(updatedSchedule);
   }, [selectedMonth, selectedYear, manualOverrides, dynamicStaff]);
 
@@ -389,6 +395,12 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
       Object.keys(editBuffer[dayKey]).forEach(staffId => {
         const value = editBuffer[dayKey][staffId];
         if(value === 'add_replacement') return;
+
+        // Skip saving shifts for staff who are not active on this date
+        const staffMember = dynamicStaff.find(s => s.id === staffId);
+        if (staffMember && !isStaffActiveOnDate(staffMember, new Date(dayKey + 'T00:00:00'))) {
+          return;
+        }
 
         let newShift: ShiftDefinition | null = null;
         let isLeave = false;
