@@ -104,15 +104,25 @@ export function generateMonthSchedule(
 
     // Filter staff who are active on this date
     const activeStaff = staffList.filter(staff => {
-      // Check if staff has startDate (DatabaseStaffMember)
       const dbStaff = staff as DatabaseStaffMember;
-      if (!dbStaff.startDate) return true; // No startDate means always active
-
-      const staffStart = new Date(dbStaff.startDate);
-      staffStart.setHours(0, 0, 0, 0);
       const checkDate = new Date(date);
       checkDate.setHours(0, 0, 0, 0);
-      return checkDate >= staffStart;
+
+      // Check startDate lower bound
+      if (dbStaff.startDate) {
+        const staffStart = new Date(dbStaff.startDate);
+        staffStart.setHours(0, 0, 0, 0);
+        if (checkDate < staffStart) return false;
+      }
+
+      // Check endDate upper bound (exclusive)
+      if (dbStaff.endDate) {
+        const staffEnd = new Date(dbStaff.endDate);
+        staffEnd.setHours(0, 0, 0, 0);
+        if (checkDate >= staffEnd) return false;
+      }
+
+      return true;
     });
 
     activeStaff.forEach(staff => {
