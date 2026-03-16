@@ -314,50 +314,78 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
       )}
 
       {/* End Service Dialog */}
-      {endServiceStaffId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                <CalendarOff className="w-5 h-5 text-orange-600" />
+      {endServiceStaffId && (() => {
+        const endServiceStaff = staff.find(s => s.id === endServiceStaffId);
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 max-w-[400px] w-full overflow-hidden">
+              {/* Header */}
+              <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 bg-gradient-to-br from-orange-200 to-orange-300 rounded-[10px] flex items-center justify-center">
+                      <CalendarOff className="w-[18px] h-[18px] text-orange-700" strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <div className="text-[15px] font-bold text-slate-900">End Service</div>
+                      <div className="text-xs text-slate-400 font-medium">{endServiceStaff?.name}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setEndServiceStaffId(null); setEndServiceDate(undefined); }}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="w-[18px] h-[18px]" />
+                  </button>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">End Service</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Set the date when this staff member will stop appearing in the timetable.
-              They will still appear on dates before this.
-            </p>
-            <div className="mb-4 flex flex-col items-center">
-              <Calendar
-                mode="single"
-                selected={endServiceDate}
-                onSelect={setEndServiceDate}
-                className="rounded-lg border"
-              />
-              {endServiceDate && (
-                <p className="mt-3 text-sm text-gray-500">
-                  Last day on timetable: <span className="font-medium text-gray-700">{format(subDays(endServiceDate, 1), 'd MMM yyyy')}</span>
+              {/* Body */}
+              <div className="px-6 pt-5 pb-6">
+                <p className="text-[13px] text-slate-500 mb-4 leading-normal">
+                  Select the date when this staff will stop appearing in the timetable.
                 </p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleEndService}
-                disabled={!endServiceDate || isEndingService}
-                className="flex-1 px-4 py-3 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 disabled:opacity-50"
-              >
-                {isEndingService ? 'Saving...' : 'Confirm'}
-              </button>
-              <button
-                onClick={() => { setEndServiceStaffId(null); setEndServiceDate(undefined); }}
-                className="flex-1 px-4 py-3 border rounded-lg text-gray-600 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
+                {/* Calendar */}
+                <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                  <Calendar
+                    mode="single"
+                    selected={endServiceDate}
+                    onSelect={setEndServiceDate}
+                    className="!bg-transparent !p-0 w-full [--cell-size:2.5rem]"
+                    modifiersClassNames={{
+                      selected: "!bg-orange-600 !text-white !font-bold",
+                    }}
+                  />
+                </div>
+                {/* Info pill */}
+                {endServiceDate && (
+                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-[10px] px-4 py-3 mb-5">
+                    <svg className="w-4 h-4 text-orange-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span className="text-[13px] text-orange-800">
+                      Last day on timetable: <strong className="text-orange-900">{format(subDays(endServiceDate, 1), 'd MMM yyyy')}</strong>
+                    </span>
+                  </div>
+                )}
+                {/* Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleEndService}
+                    disabled={!endServiceDate || isEndingService}
+                    className="flex-1 px-5 py-2.5 bg-orange-600 text-white font-semibold text-sm rounded-[10px] hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isEndingService ? 'Saving...' : 'Confirm End Date'}
+                  </button>
+                  <button
+                    onClick={() => { setEndServiceStaffId(null); setEndServiceDate(undefined); }}
+                    className="px-4 py-2.5 border border-slate-200 text-slate-500 font-semibold text-sm rounded-[10px] hover:bg-slate-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Add/Edit Form */}
       {(showAddForm || editingId) && (
