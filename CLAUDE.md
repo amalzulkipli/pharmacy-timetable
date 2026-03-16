@@ -59,7 +59,7 @@ The app is deployed at `/timetable` via `basePath: '/timetable'` in `next.config
 ### Database Schema (`prisma/schema.prisma`)
 
 **Core Models:**
-- `Staff` - Staff members with entitlements (alEntitlement, mlEntitlement)
+- `Staff` - Staff members with entitlements (alEntitlement, mlEntitlement), startDate/endDate for timetable visibility
 - `ScheduleOverride` - Published schedule changes per date/staff
 - `ScheduleDraft` - Unpublished schedule changes (same structure as ScheduleOverride)
 - `DraftMonth` - Tracks which months have unpublished drafts (year, month)
@@ -172,7 +172,9 @@ Main UI (~2000 lines), accepts `mode` prop:
 
 12. **manualOverrides vs editBuffer:** `manualOverrides` merges data from 3 months (prev/current/next) for rendering. `editBuffer` contains only days visible in the calendar grid. When saving, use `editBuffer` keys to determine which overflow days the user can actually see and edit — never iterate `manualOverrides` keys for adjacent month logic.
 
-13. **Shift Categories in Dropdowns:** `RAMADAN_SHIFT_KEYS` (type-safe `Set<keyof typeof SHIFT_DEFINITIONS>`) separates Ramadan shifts into their own dropdown category. Desktop uses `<optgroup>` filtering, mobile uses section filtering in `ShiftPickerBottomSheet.tsx`. To add a new category: define shifts in `SHIFT_DEFINITIONS`, create a `Set` of keys, filter both desktop (`Calendar.tsx` ShiftDropdown) and mobile (`ShiftPickerBottomSheet.tsx`) pickers.
+13. **Staff End Date:** `endDate` field on Staff controls when a staff member stops appearing in the timetable. `endDate` is exclusive — staff visible when `date < endDate`. Filtering happens in `generateMonthSchedule()` (source of truth) and `getActiveStaffForDate()` (unused utility). The API returns all active staff regardless of endDate; date filtering is client-side so historical months still show ended staff. Admin sets via "End Service" button in Staff Management tab.
+
+14. **Shift Categories in Dropdowns:** `RAMADAN_SHIFT_KEYS` (type-safe `Set<keyof typeof SHIFT_DEFINITIONS>`) separates Ramadan shifts into their own dropdown category. Desktop uses `<optgroup>` filtering, mobile uses section filtering in `ShiftPickerBottomSheet.tsx`. To add a new category: define shifts in `SHIFT_DEFINITIONS`, create a `Set` of keys, filter both desktop (`Calendar.tsx` ShiftDropdown) and mobile (`ShiftPickerBottomSheet.tsx`) pickers.
 
 ### Draft/Publish Workflow
 
@@ -251,6 +253,22 @@ DATABASE_URL=file:./pharmacy.db
 NODE_ENV=production
 HOSTNAME=0.0.0.0
 ```
+
+### Timezone
+
+The app uses `Asia/Kuala_Lumpur` timezone (set via `TZ` env in Dockerfile). All schedule dates and leave calculations assume this timezone.
+
+### Security Headers
+
+`next.config.ts` sets CSP, X-Frame-Options (DENY), and other security headers. When adding external resources (scripts, fonts, images, API endpoints), update the `Content-Security-Policy` header in `next.config.ts` or they will be blocked.
+
+### Docker Entrypoint
+
+`docker-entrypoint.sh` handles DB initialization on first deploy:
+- Copies seed DB from `/app/prisma-template/` if no DB exists at `/app/prisma/pharmacy.db`
+- Set `FORCE_DB_SEED=true` env to overwrite existing DB with template
+- Applies pending schema migrations via raw `sqlite3` commands (avoids Prisma CLI runtime dependency)
+- Runs `node server.js` (Next.js standalone)
 
 ### Production Quirks
 
