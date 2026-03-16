@@ -26,7 +26,8 @@ export async function GET() {
       defaultOffDays: parseOffDays(s.defaultOffDays),
       alEntitlement: s.alEntitlement,
       mlEntitlement: s.mlEntitlement,
-      startDate: s.startDate?.toISOString() || null,  // Include startDate for timetable filtering
+      startDate: s.startDate?.toISOString() || null,
+      endDate: s.endDate?.toISOString() || null,
       colorIndex: s.colorIndex,  // Include colorIndex for UI colors
       isActive: s.isActive,
       createdAt: s.createdAt,
