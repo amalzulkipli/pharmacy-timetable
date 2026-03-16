@@ -37,6 +37,17 @@ SQL
   echo "  custom_time_fields: applied"
 fi
 
+# Migration: add_staff_end_date
+if sqlite3 "$DB_PATH" "PRAGMA table_info('Staff')" | grep -q endDate; then
+  echo "  staff_end_date: already applied"
+else
+  echo "  staff_end_date: applying..."
+  sqlite3 "$DB_PATH" <<'SQL'
+ALTER TABLE "Staff" ADD COLUMN "endDate" DATETIME;
+SQL
+  echo "  staff_end_date: applied"
+fi
+
 echo "Schema up to date."
 echo "Starting application..."
 exec node server.js
