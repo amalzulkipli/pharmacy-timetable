@@ -8,6 +8,7 @@ import type { StaffMember } from '@/types/schedule';
 // Extended StaffMember type with database fields
 export interface DatabaseStaffMember extends StaffMember {
   startDate?: Date | null;
+  endDate?: Date | null;
   colorIndex?: number | null;
   alEntitlement?: number;
   mlEntitlement?: number;
@@ -51,6 +52,7 @@ export function useStaffMembers() {
           weeklyHours: number;
           defaultOffDays: number[];
           startDate?: string | null;
+          endDate?: string | null;
           colorIndex?: number | null;
           alEntitlement?: number;
           mlEntitlement?: number;
@@ -62,6 +64,7 @@ export function useStaffMembers() {
           weeklyHours: s.weeklyHours,
           defaultOffDays: s.defaultOffDays,
           startDate: s.startDate ? new Date(s.startDate) : null,
+          endDate: s.endDate ? new Date(s.endDate) : null,
           colorIndex: s.colorIndex,
           alEntitlement: s.alEntitlement,
           mlEntitlement: s.mlEntitlement,
@@ -91,6 +94,7 @@ export function useStaffMembers() {
       return {
         ...legacyStaff,
         startDate: dbRecord?.startDate || null,
+        endDate: dbRecord?.endDate || null,
         colorIndex: dbRecord?.colorIndex ?? null,
         alEntitlement: dbRecord?.alEntitlement,
         mlEntitlement: dbRecord?.mlEntitlement,
@@ -121,16 +125,23 @@ export function getActiveStaffForDate(
   date: Date
 ): DatabaseStaffMember[] {
   return staffList.filter(staff => {
-    // If no startDate, staff is always active (legacy staff)
-    if (!staff.startDate) return true;
-
-    // Staff is active if the date is on or after their start date
-    const staffStart = new Date(staff.startDate);
-    // Compare dates only (ignore time)
-    staffStart.setHours(0, 0, 0, 0);
     const checkDate = new Date(date);
     checkDate.setHours(0, 0, 0, 0);
 
-    return checkDate >= staffStart;
+    // Check startDate lower bound
+    if (staff.startDate) {
+      const staffStart = new Date(staff.startDate);
+      staffStart.setHours(0, 0, 0, 0);
+      if (checkDate < staffStart) return false;
+    }
+
+    // Check endDate upper bound (exclusive)
+    if (staff.endDate) {
+      const staffEnd = new Date(staff.endDate);
+      staffEnd.setHours(0, 0, 0, 0);
+      if (checkDate >= staffEnd) return false;
+    }
+
+    return true;
   });
 }
