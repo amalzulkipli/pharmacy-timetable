@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Users, Plus, Pencil, Trash2, Save, X, Loader2, CalendarOff } from 'lucide-react';
 import { AVATAR_COLORS } from '@/staff-data';
 import { apiUrl } from '@/lib/api';
+import { Calendar } from '@/components/ui/calendar';
+import { format, subDays } from 'date-fns';
 
 interface Staff {
   id: string;
@@ -123,7 +125,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
 
   // End Service dialog state
   const [endServiceStaffId, setEndServiceStaffId] = useState<string | null>(null);
-  const [endServiceDate, setEndServiceDate] = useState('');
+  const [endServiceDate, setEndServiceDate] = useState<Date | undefined>(undefined);
   const [isEndingService, setIsEndingService] = useState(false);
 
   // Form state
@@ -233,7 +235,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
       const response = await fetch(apiUrl(`/api/staff/${endServiceStaffId}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endDate: endServiceDate }),
+        body: JSON.stringify({ endDate: format(endServiceDate, 'yyyy-MM-dd') }),
       });
 
       if (!response.ok) {
@@ -243,7 +245,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
 
       await fetchStaff();
       setEndServiceStaffId(null);
-      setEndServiceDate('');
+      setEndServiceDate(undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to set end date');
     } finally {
@@ -268,13 +270,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
 
   const openEndServiceDialog = (s: Staff) => {
     setEndServiceStaffId(s.id);
-    setEndServiceDate(s.endDate ? s.endDate.split('T')[0] : '');
-  };
-
-  const formatLastDay = (endDateStr: string) => {
-    const d = new Date(endDateStr);
-    d.setDate(d.getDate() - 1);
-    return d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+    setEndServiceDate(s.endDate ? new Date(s.endDate) : undefined);
   };
 
   if (isLoading) {
@@ -331,17 +327,16 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
               Set the date when this staff member will stop appearing in the timetable.
               They will still appear on dates before this.
             </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-              <input
-                type="date"
-                value={endServiceDate}
-                onChange={(e) => setEndServiceDate(e.target.value)}
-                className="w-full border rounded-lg px-4 py-3 text-gray-900"
+            <div className="mb-4 flex flex-col items-center">
+              <Calendar
+                mode="single"
+                selected={endServiceDate}
+                onSelect={setEndServiceDate}
+                className="rounded-lg border"
               />
               {endServiceDate && (
-                <p className="mt-2 text-sm text-gray-500">
-                  Last day on timetable: <span className="font-medium text-gray-700">{formatLastDay(endServiceDate)}</span>
+                <p className="mt-3 text-sm text-gray-500">
+                  Last day on timetable: <span className="font-medium text-gray-700">{format(subDays(endServiceDate, 1), 'd MMM yyyy')}</span>
                 </p>
               )}
             </div>
@@ -354,7 +349,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
                 {isEndingService ? 'Saving...' : 'Confirm'}
               </button>
               <button
-                onClick={() => { setEndServiceStaffId(null); setEndServiceDate(''); }}
+                onClick={() => { setEndServiceStaffId(null); setEndServiceDate(undefined); }}
                 className="flex-1 px-4 py-3 border rounded-lg text-gray-600 hover:bg-gray-100"
               >
                 Cancel
