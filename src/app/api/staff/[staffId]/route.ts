@@ -35,6 +35,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       defaultOffDays: parseOffDays(staff.defaultOffDays),
       alEntitlement: staff.alEntitlement,
       mlEntitlement: staff.mlEntitlement,
+      startDate: staff.startDate?.toISOString() || null,
+      endDate: staff.endDate?.toISOString() || null,
+      colorIndex: staff.colorIndex,
       isActive: staff.isActive,
     });
   } catch (error) {
@@ -48,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { staffId } = await params;
     const body = await request.json();
-    const { name, role, weeklyHours, defaultOffDays, alEntitlement, mlEntitlement, isActive } = body;
+    const { name, role, weeklyHours, defaultOffDays, alEntitlement, mlEntitlement, isActive, startDate, endDate } = body;
 
     // Build update data
     const updateData: Record<string, unknown> = {};
@@ -59,6 +62,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (alEntitlement !== undefined) updateData.alEntitlement = alEntitlement;
     if (mlEntitlement !== undefined) updateData.mlEntitlement = mlEntitlement;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
+    if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
+
+    // Validate: endDate must be after startDate if both are set
+    if (startDate !== undefined || endDate !== undefined) {
+      const existing = await prisma.staff.findUnique({ where: { staffId }, select: { startDate: true, endDate: true } });
+      const effectiveStart = startDate !== undefined ? (startDate ? new Date(startDate) : null) : existing?.startDate;
+      const effectiveEnd = endDate !== undefined ? (endDate ? new Date(endDate) : null) : existing?.endDate;
+      if (effectiveStart && effectiveEnd && effectiveEnd <= effectiveStart) {
+        return NextResponse.json(
+          { error: 'End date must be after start date' },
+          { status: 400 }
+        );
+      }
+    }
 
     const staff = await prisma.staff.update({
       where: { staffId },
@@ -86,6 +104,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       defaultOffDays: parseOffDays(staff.defaultOffDays),
       alEntitlement: staff.alEntitlement,
       mlEntitlement: staff.mlEntitlement,
+      startDate: staff.startDate?.toISOString() || null,
+      endDate: staff.endDate?.toISOString() || null,
+      colorIndex: staff.colorIndex,
       isActive: staff.isActive,
     });
   } catch (error) {
