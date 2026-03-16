@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Users, Plus, Pencil, Trash2, Save, X, Loader2, CalendarOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Users, Plus, Pencil, Trash2, Save, X, Loader2, CalendarIcon } from 'lucide-react';
 import { AVATAR_COLORS } from '@/staff-data';
 import { apiUrl } from '@/lib/api';
 import { Calendar } from '@/components/ui/calendar';
-import { format, subDays } from 'date-fns';
+import { format } from 'date-fns';
 
 interface Staff {
   id: string;
@@ -24,19 +24,97 @@ interface StaffManagementProps {
   isMobile?: boolean;
 }
 
+// Reusable date picker field with Calendar dropdown
+function DatePickerField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  helperText,
+  isMobile,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  helperText?: string;
+  isMobile?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  const selectedDate = value ? new Date(value + 'T00:00:00') : undefined;
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-sm font-medium text-gray-600 mb-2">{label}</label>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`w-full border rounded-lg text-left flex items-center justify-between ${
+          isMobile ? 'px-4 py-3 text-base min-h-[48px]' : 'px-3 py-2 text-sm'
+        } ${value ? 'text-gray-900' : 'text-gray-400'}`}
+      >
+        <span>{value ? format(selectedDate!, 'd MMM yyyy') : (placeholder || 'Select date')}</span>
+        <div className="flex items-center gap-1.5">
+          {value && (
+            <span
+              onClick={(e) => { e.stopPropagation(); onChange(''); setOpen(false); }}
+              className="text-gray-400 hover:text-red-500 cursor-pointer p-0.5"
+              title="Clear date"
+            >
+              <X className="w-3.5 h-3.5" />
+            </span>
+          )}
+          <CalendarIcon className="w-4 h-4 text-gray-400" />
+        </div>
+      </button>
+      {helperText && <p className="mt-1 text-xs text-gray-500">{helperText}</p>}
+      {open && (
+        <div className="absolute z-50 mt-1 bg-white rounded-xl border shadow-lg p-3">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => {
+              if (date) {
+                onChange(format(date, 'yyyy-MM-dd'));
+              } else {
+                onChange('');
+              }
+              setOpen(false);
+            }}
+            className="!bg-transparent !p-0 w-full [--cell-size:2.25rem]"
+            modifiersClassNames={{
+              selected: "!bg-brand !text-white !font-bold",
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Mobile Staff Card Component
 function MobileStaffListCard({
   staff,
   onEdit,
   onDelete,
-  onEndService,
-  onClearEndDate,
 }: {
   staff: Staff;
   onEdit: (s: Staff) => void;
   onDelete: (id: string) => void;
-  onEndService: (s: Staff) => void;
-  onClearEndDate: (id: string) => void;
 }) {
   const avatarColors = AVATAR_COLORS[staff.id] || { bg: 'bg-gray-500' };
   const initials = staff.name.substring(0, 2).toUpperCase();
@@ -78,12 +156,6 @@ function MobileStaffListCard({
           <span className="text-sm text-orange-700">
             Ends: {new Date(staff.endDate).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
-          <button
-            onClick={() => onClearEndDate(staff.id)}
-            className="text-xs text-orange-600 hover:text-orange-800 font-medium"
-          >
-            Clear
-          </button>
         </div>
       )}
 
@@ -97,15 +169,8 @@ function MobileStaffListCard({
           Edit
         </button>
         <button
-          onClick={() => onEndService(staff)}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-orange-50 text-orange-600 rounded-lg font-medium text-sm min-h-[48px]"
-        >
-          <CalendarOff className="w-5 h-5" />
-          {staff.endDate ? 'Edit End' : 'End Service'}
-        </button>
-        <button
           onClick={() => onDelete(staff.id)}
-          className="flex items-center justify-center gap-2 px-3 py-3 bg-red-50 text-red-600 rounded-lg font-medium text-sm min-h-[48px]"
+          className="flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-lg font-medium text-sm min-h-[48px]"
           title="Set Inactive"
         >
           <Trash2 className="w-5 h-5" />
@@ -123,11 +188,6 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
   const [showAddForm, setShowAddForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // End Service dialog state
-  const [endServiceStaffId, setEndServiceStaffId] = useState<string | null>(null);
-  const [endServiceDate, setEndServiceDate] = useState<Date | undefined>(undefined);
-  const [isEndingService, setIsEndingService] = useState(false);
-
   // Form state
   const [formData, setFormData] = useState({
     staffId: '',
@@ -136,7 +196,8 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
     weeklyHours: 45,
     alEntitlement: 14,
     mlEntitlement: 14,
-    startDate: '',  // Empty string = no start date restriction
+    startDate: '',
+    endDate: '',
   });
 
   // Fetch staff list
@@ -167,7 +228,8 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
       weeklyHours: s.weeklyHours,
       alEntitlement: s.alEntitlement,
       mlEntitlement: s.mlEntitlement,
-      startDate: s.startDate ? s.startDate.split('T')[0] : '',  // Format as YYYY-MM-DD
+      startDate: s.startDate ? s.startDate.split('T')[0] : '',
+      endDate: s.endDate ? s.endDate.split('T')[0] : '',
     });
   };
 
@@ -182,6 +244,7 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
       alEntitlement: 14,
       mlEntitlement: 14,
       startDate: '',
+      endDate: '',
     });
   };
 
@@ -192,10 +255,17 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
       const url = isEditing ? apiUrl(`/api/staff/${editingId}`) : apiUrl('/api/staff');
       const method = isEditing ? 'PUT' : 'POST';
 
+      // Send endDate as null if empty string (to clear it)
+      const payload = {
+        ...formData,
+        endDate: formData.endDate || null,
+        startDate: formData.startDate || null,
+      };
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -225,52 +295,6 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
     }
-  };
-
-  const handleEndService = async () => {
-    if (!endServiceStaffId || !endServiceDate) return;
-
-    try {
-      setIsEndingService(true);
-      const response = await fetch(apiUrl(`/api/staff/${endServiceStaffId}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endDate: format(endServiceDate, 'yyyy-MM-dd') }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to set end date');
-      }
-
-      await fetchStaff();
-      setEndServiceStaffId(null);
-      setEndServiceDate(undefined);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to set end date');
-    } finally {
-      setIsEndingService(false);
-    }
-  };
-
-  const handleClearEndDate = async (staffId: string) => {
-    try {
-      const response = await fetch(apiUrl(`/api/staff/${staffId}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endDate: null }),
-      });
-
-      if (!response.ok) throw new Error('Failed to clear end date');
-      await fetchStaff();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to clear end date');
-    }
-  };
-
-  const openEndServiceDialog = (s: Staff) => {
-    setEndServiceStaffId(s.id);
-    setEndServiceDate(s.endDate ? new Date(s.endDate) : undefined);
   };
 
   if (isLoading) {
@@ -312,80 +336,6 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
           </button>
         </div>
       )}
-
-      {/* End Service Dialog */}
-      {endServiceStaffId && (() => {
-        const endServiceStaff = staff.find(s => s.id === endServiceStaffId);
-        return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 max-w-[400px] w-full overflow-hidden">
-              {/* Header */}
-              <div className="px-6 pt-5 pb-4 border-b border-slate-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 bg-gradient-to-br from-orange-200 to-orange-300 rounded-[10px] flex items-center justify-center">
-                      <CalendarOff className="w-[18px] h-[18px] text-orange-700" strokeWidth={2.5} />
-                    </div>
-                    <div>
-                      <div className="text-[15px] font-bold text-slate-900">End Service</div>
-                      <div className="text-xs text-slate-400 font-medium">{endServiceStaff?.name}</div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { setEndServiceStaffId(null); setEndServiceDate(undefined); }}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <X className="w-[18px] h-[18px]" />
-                  </button>
-                </div>
-              </div>
-              {/* Body */}
-              <div className="px-6 pt-5 pb-6">
-                <p className="text-[13px] text-slate-500 mb-4 leading-normal">
-                  Select the date when this staff will stop appearing in the timetable.
-                </p>
-                {/* Calendar */}
-                <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                  <Calendar
-                    mode="single"
-                    selected={endServiceDate}
-                    onSelect={setEndServiceDate}
-                    className="!bg-transparent !p-0 w-full [--cell-size:2.5rem]"
-                    modifiersClassNames={{
-                      selected: "!bg-orange-600 !text-white !font-bold",
-                    }}
-                  />
-                </div>
-                {/* Info pill */}
-                {endServiceDate && (
-                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-[10px] px-4 py-3 mb-5">
-                    <svg className="w-4 h-4 text-orange-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span className="text-[13px] text-orange-800">
-                      Last day on timetable: <strong className="text-orange-900">{format(subDays(endServiceDate, 1), 'd MMM yyyy')}</strong>
-                    </span>
-                  </div>
-                )}
-                {/* Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleEndService}
-                    disabled={!endServiceDate || isEndingService}
-                    className="flex-1 px-5 py-2.5 bg-orange-600 text-white font-semibold text-sm rounded-[10px] hover:bg-orange-700 disabled:opacity-50 transition-colors"
-                  >
-                    {isEndingService ? 'Saving...' : 'Confirm End Date'}
-                  </button>
-                  <button
-                    onClick={() => { setEndServiceStaffId(null); setEndServiceDate(undefined); }}
-                    className="px-4 py-2.5 border border-slate-200 text-slate-500 font-semibold text-sm rounded-[10px] hover:bg-slate-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Add/Edit Form */}
       {(showAddForm || editingId) && (
@@ -465,19 +415,22 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
                 }`}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">Start Date (optional)</label>
-              <input
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
-                className={`w-full border rounded-lg text-gray-900 ${
-                  isMobile ? 'px-4 py-3 text-base min-h-[48px]' : 'px-3 py-2 text-sm'
-                }`}
-                placeholder="Leave empty for no date restriction"
-              />
-              <p className="mt-1 text-xs text-gray-500">Staff will appear in timetable from this date forward</p>
-            </div>
+            <DatePickerField
+              label="Start Date (optional)"
+              value={formData.startDate}
+              onChange={(v) => setFormData((p) => ({ ...p, startDate: v }))}
+              placeholder="No start date"
+              helperText="Staff appears in timetable from this date"
+              isMobile={isMobile}
+            />
+            <DatePickerField
+              label="End Date (optional)"
+              value={formData.endDate}
+              onChange={(v) => setFormData((p) => ({ ...p, endDate: v }))}
+              placeholder="No end date"
+              helperText="Staff stops appearing on this date"
+              isMobile={isMobile}
+            />
           </div>
           <div className={`mt-4 ${isMobile ? 'flex flex-col gap-2' : 'flex justify-end space-x-2'}`}>
             <button
@@ -513,8 +466,6 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
               staff={s}
               onEdit={handleEdit}
               onDelete={handleDelete}
-              onEndService={openEndServiceDialog}
-              onClearEndDate={handleClearEndDate}
             />
           ))}
         </div>
@@ -544,18 +495,9 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
                     <td className="px-4 py-3 text-sm text-gray-600">{s.mlEntitlement} days</td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {s.endDate ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-orange-600 font-medium">
-                            {new Date(s.endDate).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </span>
-                          <button
-                            onClick={() => handleClearEndDate(s.id)}
-                            className="text-xs text-gray-400 hover:text-red-500"
-                            title="Clear end date"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
+                        <span className="text-orange-600 font-medium">
+                          {new Date(s.endDate).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
                       ) : (
                         <span className="text-gray-400">&mdash;</span>
                       )}
@@ -568,13 +510,6 @@ export default function StaffManagement({ isMobile = false }: StaffManagementPro
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openEndServiceDialog(s)}
-                          className="p-1 text-orange-600 hover:bg-orange-50 rounded"
-                          title={s.endDate ? 'Edit End Date' : 'End Service'}
-                        >
-                          <CalendarOff className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(s.id)}
