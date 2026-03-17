@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
 import { AVATAR_COLORS } from '@/staff-data';
 
 interface LeaveHistoryEntry {
@@ -16,6 +17,7 @@ interface LeaveHistoryEntry {
 interface MaternityPeriod {
   startDate: string;
   endDate: string;
+  status?: string;
 }
 
 interface StaffLeaveCardProps {
@@ -27,6 +29,7 @@ interface StaffLeaveCardProps {
   ml: { entitlement: number; used: number; remaining: number };
   mat?: { entitlement: number; used: number; remaining: number; activePeriod?: MaternityPeriod };
   history: LeaveHistoryEntry[];
+  onEndMaternityEarly?: (staffId: string, returnDate: string) => Promise<void>;
 }
 
 function getAvatarColor(staffId: string): string {
@@ -67,8 +70,26 @@ export default function StaffLeaveCard({
   ml,
   mat,
   history,
+  onEndMaternityEarly,
 }: StaffLeaveCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showEndEarlyDialog, setShowEndEarlyDialog] = useState(false);
+  const [endEarlyDate, setEndEarlyDate] = useState<Date | undefined>(undefined);
+  const [isEndingEarly, setIsEndingEarly] = useState(false);
+
+  const handleEndEarly = async () => {
+    if (!endEarlyDate || !onEndMaternityEarly) return;
+    try {
+      setIsEndingEarly(true);
+      await onEndMaternityEarly(staffId, format(endEarlyDate, 'yyyy-MM-dd'));
+      setShowEndEarlyDialog(false);
+      setEndEarlyDate(undefined);
+    } catch {
+      // Error handled by parent
+    } finally {
+      setIsEndingEarly(false);
+    }
+  };
 
   const alPercentUsed = al.entitlement > 0 ? (al.used / al.entitlement) * 100 : 0;
   const rlPercentUsed = rl.earned > 0 ? (rl.used / rl.earned) * 100 : 0;
@@ -155,16 +176,32 @@ export default function StaffLeaveCard({
           </div>
         </div>
 
-        {/* Maternity Leave - only show if there's an active period or days used */}
+        {/* Maternity Leave - only show if there's an active/ended period or days used */}
         {mat && (mat.activePeriod || mat.used > 0) && (
           <div className="mb-5 p-3 bg-blue-50 rounded-lg border border-blue-100">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-blue-700 font-medium">Maternity Leave</span>
-              {mat.activePeriod ? (
-                <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-                  Active
-                </span>
-              ) : null}
+              <div className="flex items-center gap-2">
+                {mat.activePeriod?.status === 'ended_early' ? (
+                  <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                    Ended Early
+                  </span>
+                ) : mat.activePeriod ? (
+                  <>
+                    {onEndMaternityEarly && (
+                      <button
+                        onClick={() => setShowEndEarlyDialog(true)}
+                        className="text-xs text-orange-600 hover:text-orange-700 font-medium"
+                      >
+                        End Early
+                      </button>
+                    )}
+                    <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  </>
+                ) : null}
+              </div>
             </div>
             {mat.activePeriod ? (
               <div className="text-sm text-blue-600">
@@ -183,6 +220,63 @@ export default function StaffLeaveCard({
                   <span>{mat.entitlement} total</span>
                 </div>
               </>
+            )}
+
+            {/* End Early Confirmation Dialog */}
+            {showEndEarlyDialog && mat.activePeriod && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 max-w-[400px] w-full overflow-hidden">
+                  <div className="px-6 pt-5 pb-4 border-b border-slate-100">
+                    <div className="text-[15px] font-bold text-slate-900">End Maternity Leave Early</div>
+                    <div className="text-xs text-slate-400 font-medium mt-0.5">{staffName}</div>
+                  </div>
+                  <div className="px-6 pt-5 pb-6">
+                    <p className="text-[13px] text-slate-500 mb-4 leading-normal">
+                      Select the return-to-work date. All maternity entries from this date onward will be removed.
+                    </p>
+                    <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                      <Calendar
+                        mode="single"
+                        selected={endEarlyDate}
+                        onSelect={setEndEarlyDate}
+                        defaultMonth={new Date(mat.activePeriod.startDate)}
+                        disabled={(date) => {
+                          const start = new Date(mat.activePeriod!.startDate);
+                          const end = new Date(mat.activePeriod!.endDate);
+                          return date <= start || date > end;
+                        }}
+                        className="!bg-transparent !p-0 w-full [--cell-size:2.25rem]"
+                        modifiersClassNames={{
+                          selected: "!bg-orange-600 !text-white !font-bold",
+                        }}
+                      />
+                    </div>
+                    {endEarlyDate && mat.activePeriod && (
+                      <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-[10px] px-4 py-3 mb-5">
+                        <svg className="w-4 h-4 text-orange-600 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span className="text-[13px] text-orange-800">
+                          {differenceInDays(new Date(mat.activePeriod.endDate), endEarlyDate) + 1} days will be removed
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleEndEarly}
+                        disabled={!endEarlyDate || isEndingEarly}
+                        className="flex-1 px-5 py-2.5 bg-orange-600 text-white font-semibold text-sm rounded-[10px] hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                      >
+                        {isEndingEarly ? 'Ending...' : 'Confirm End Early'}
+                      </button>
+                      <button
+                        onClick={() => { setShowEndEarlyDialog(false); setEndEarlyDate(undefined); }}
+                        className="px-4 py-2.5 border border-slate-200 text-slate-500 font-semibold text-sm rounded-[10px] hover:bg-slate-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}
