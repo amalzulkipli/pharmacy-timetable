@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 export interface MaternityPeriod {
   startDate: string;
   endDate: string;
+  status?: string;
 }
 
 export interface LeaveBalanceSummary {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch active maternity leave periods for all staff
     const maternityPeriods = await prisma.maternityLeavePeriod.findMany({
-      where: { status: 'active' },
+      where: { status: { in: ['active', 'ended_early'] } },
     });
 
     // Create a map of staffId to active maternity period
@@ -59,6 +60,7 @@ export async function GET(request: NextRequest) {
       maternityMap.set(period.staffId, {
         startDate: period.startDate.toISOString(),
         endDate: period.endDate.toISOString(),
+        status: period.status,
       });
     });
 

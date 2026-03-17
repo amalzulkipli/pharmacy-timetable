@@ -8,6 +8,7 @@ import { apiUrl } from '@/lib/api';
 interface MaternityPeriod {
   startDate: string;
   endDate: string;
+  status?: string;
 }
 
 interface LeaveBalance {
@@ -94,6 +95,21 @@ export default function LeaveOverview() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleEndMaternityEarly = async (staffId: string, returnDate: string) => {
+    const response = await fetch(apiUrl('/api/leave/maternity/end-early'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId, returnDate }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to end maternity leave early');
+    }
+
+    await fetchData();
+  };
 
   const handleRecalculateRL = async () => {
     try {
@@ -183,6 +199,7 @@ export default function LeaveOverview() {
             ml={balance.ml}
             mat={balance.mat}
             history={historyByStaff[balance.staffId] || []}
+            onEndMaternityEarly={handleEndMaternityEarly}
           />
         ))}
       </div>
