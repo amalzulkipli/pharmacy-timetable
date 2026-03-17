@@ -43,7 +43,7 @@ ADMIN_PASSWORD_HASH="<base64-encoded-bcrypt-hash>"
 ### Tech Stack
 - **Framework:** Next.js 15 (App Router, standalone output)
 - **Database:** Prisma 6 with SQLite (`prisma/pharmacy.db`)
-- **UI:** React 19, TypeScript, Tailwind CSS v4
+- **UI:** React 19, TypeScript, Tailwind CSS v4, shadcn/ui (Calendar, Popover)
 - **Date Utilities:** date-fns
 - **Icons:** lucide-react
 
@@ -118,13 +118,14 @@ Schedules use **alternating weekly patterns** based on ISO week numbers:
 | `GET/DELETE /api/leave/history` | Leave history entries (GET with staffId param, DELETE by id) |
 | `POST /api/leave/calculate-rl` | Recalculate replacement leave |
 | `GET/POST /api/leave/maternity` | Get active maternity periods / Create 98-day maternity leave |
+| `POST /api/leave/maternity/end-early` | End maternity leave early (deletes MAT entries from return date, adjusts balance) |
 | `GET /api/health` | Health check endpoint (no auth required) |
 | `POST /api/migrate` | Seed database with initial data |
 
 ### Key Hooks (`src/hooks/`)
 
 - `useScheduleDB.ts` - Database operations for overrides with offline fallback to localStorage
-- `useStaff.ts` - Fetches staff from database, merges with legacy hardcoded `STAFF_MEMBERS`. Exports `getActiveStaffForDate()` for filtering by start date
+- `useStaff.ts` - Fetches staff from database, merges with legacy hardcoded `STAFF_MEMBERS`. Exports `isStaffActiveOnDate()` (single staff check) and `getActiveStaffForDate()` (list filter) for date-boundary filtering
 - `useAuth.ts` - Admin authentication
 - `useLocalStorage.ts` - Local storage utilities
 
@@ -172,7 +173,7 @@ Main UI (~2000 lines), accepts `mode` prop:
 
 12. **manualOverrides vs editBuffer:** `manualOverrides` merges data from 3 months (prev/current/next) for rendering. `editBuffer` contains only days visible in the calendar grid. When saving, use `editBuffer` keys to determine which overflow days the user can actually see and edit — never iterate `manualOverrides` keys for adjacent month logic.
 
-13. **Staff End Date:** `endDate` field on Staff controls when a staff member stops appearing in the timetable. `endDate` is exclusive — staff visible when `date < endDate`. Filtering happens in `generateMonthSchedule()` (source of truth) and `getActiveStaffForDate()` (unused utility). The API returns all active staff regardless of endDate; date filtering is client-side so historical months still show ended staff. Admin sets via "End Service" button in Staff Management tab.
+13. **Staff End Date:** `endDate` field on Staff controls when a staff member stops appearing in the timetable. `endDate` is exclusive — staff visible when `date < endDate`. Filtering happens in three places: `generateMonthSchedule()` (base schedule), `applyOverrides()` in Calendar.tsx (skips database overrides for ended staff via `isStaffActiveOnDate()`), and `handleSaveChanges()` (prevents saving shifts for ended staff). The API returns all active staff regardless of endDate; date filtering is client-side so historical months still show ended staff. Admin sets endDate via the edit form in Staff Management tab (same DatePickerField as startDate).
 
 14. **Shift Categories in Dropdowns:** `RAMADAN_SHIFT_KEYS` (type-safe `Set<keyof typeof SHIFT_DEFINITIONS>`) separates Ramadan shifts into their own dropdown category. Desktop uses `<optgroup>` filtering, mobile uses section filtering in `ShiftPickerBottomSheet.tsx`. To add a new category: define shifts in `SHIFT_DEFINITIONS`, create a `Set` of keys, filter both desktop (`Calendar.tsx` ShiftDropdown) and mobile (`ShiftPickerBottomSheet.tsx`) pickers.
 
@@ -205,6 +206,11 @@ Maternity leave is a special leave type that creates 98 consecutive days of leav
 - `src/app/api/leave/maternity/route.ts` - Batch creates 98 draft entries
 
 **Display:** MAT leave displays with orange text like other leave types in calendar view.
+
+**End Early:**
+Admin can end maternity leave early via Leave tab → staff card → ⋮ menu → "End Maternity Early". `POST /api/leave/maternity/end-early` performs atomic cleanup: deletes MAT entries (ScheduleOverride + ScheduleDraft + LeaveHistory) from return date onward, decrements LeaveBalance.matUsed, updates MaternityLeavePeriod status to `ended_early`. All in one transaction.
+
+**MaternityLeavePeriod Status Values:** `active` | `cancelled` | `ended_early`
 
 ### Offline Sync Strategy
 
