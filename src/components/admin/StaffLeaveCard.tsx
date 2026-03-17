@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDown, ChevronUp, MoreVertical, CalendarOff } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { AVATAR_COLORS } from '@/staff-data';
@@ -74,8 +74,21 @@ export default function StaffLeaveCard({
 }: StaffLeaveCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showEndEarlyDialog, setShowEndEarlyDialog] = useState(false);
+  const [showMatMenu, setShowMatMenu] = useState(false);
   const [endEarlyDate, setEndEarlyDate] = useState<Date | undefined>(undefined);
   const [isEndingEarly, setIsEndingEarly] = useState(false);
+
+  const matMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showMatMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (matMenuRef.current && !matMenuRef.current.contains(e.target as Node)) {
+        setShowMatMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showMatMenu]);
 
   const handleEndEarly = async () => {
     if (!endEarlyDate || !onEndMaternityEarly) return;
@@ -178,34 +191,45 @@ export default function StaffLeaveCard({
 
         {/* Maternity Leave - only show if there's an active/ended period or days used */}
         {mat && (mat.activePeriod || mat.used > 0) && (
-          <div className="mb-5 p-3 bg-blue-50 rounded-lg border border-blue-100">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-blue-700 font-medium">Maternity Leave</span>
+          <div className={`mb-5 p-3 rounded-lg border ${mat.activePeriod?.status === 'ended_early' ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-100'}`}>
+            <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
+                <span className={`text-sm font-semibold ${mat.activePeriod?.status === 'ended_early' ? 'text-gray-500' : 'text-blue-700'}`}>Maternity Leave</span>
                 {mat.activePeriod?.status === 'ended_early' ? (
-                  <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
-                    Ended Early
-                  </span>
+                  <span className="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-semibold tracking-wide">ENDED EARLY</span>
                 ) : mat.activePeriod ? (
-                  <>
-                    {onEndMaternityEarly && (
-                      <button
-                        onClick={() => setShowEndEarlyDialog(true)}
-                        className="text-xs text-orange-600 hover:text-orange-700 font-medium"
-                      >
-                        End Early
-                      </button>
-                    )}
-                    <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-                      Active
-                    </span>
-                  </>
+                  <span className="text-[10px] text-green-700 bg-green-100 px-2 py-0.5 rounded-full font-semibold tracking-wide">ACTIVE</span>
                 ) : null}
               </div>
+              {/* Kebab menu — only show for active periods */}
+              {mat.activePeriod && mat.activePeriod.status !== 'ended_early' && onEndMaternityEarly && (
+                <div ref={matMenuRef} className="relative">
+                  <button
+                    onClick={() => setShowMatMenu(!showMatMenu)}
+                    className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${showMatMenu ? 'bg-blue-200 text-blue-700' : 'text-gray-400 hover:bg-blue-100 hover:text-blue-600'}`}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {showMatMenu && (
+                    <div className="absolute top-8 right-0 bg-white border border-gray-200 rounded-lg shadow-lg ring-1 ring-black/5 min-w-[200px] z-10 overflow-hidden">
+                      <button
+                        onClick={() => { setShowMatMenu(false); setShowEndEarlyDialog(true); }}
+                        className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-[13px] text-orange-600 hover:bg-orange-50 font-medium text-left"
+                      >
+                        <CalendarOff className="w-4 h-4" />
+                        End Maternity Early
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {mat.activePeriod ? (
-              <div className="text-sm text-blue-600">
-                {format(parseISO(mat.activePeriod.startDate), 'd MMM yyyy')} - {format(parseISO(mat.activePeriod.endDate), 'd MMM yyyy')}
+              <div className={`text-sm ${mat.activePeriod.status === 'ended_early' ? 'text-gray-400' : 'text-blue-600'}`}>
+                {format(parseISO(mat.activePeriod.startDate), 'd MMM yyyy')} → {format(parseISO(mat.activePeriod.endDate), 'd MMM yyyy')}
+                {mat.activePeriod.status === 'ended_early' && mat.used > 0 && (
+                  <span className="text-xs text-gray-400 ml-1">({Math.floor(mat.used)} days)</span>
+                )}
               </div>
             ) : (
               <>
