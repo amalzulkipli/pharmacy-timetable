@@ -1,0 +1,17 @@
+# Dependabot config with 7-day cooldown for supply-chain attack mitigation.
+# Cooldown rejects PRs for package versions published less than N days ago.
+# Most npm supply-chain attacks are caught and pulled within 2-4 hours of publish,
+# so a 7-day gate filters them out almost completely. Security-flagged updates
+# bypass the cooldown automatically.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+      semver-patch-days: 3
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
