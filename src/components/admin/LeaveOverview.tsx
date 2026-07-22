@@ -222,6 +222,8 @@ export default function LeaveOverview() {
           <strong>ML:</strong> Medical Leave entitlement set per staff member.
           <br />
           <strong>MAT:</strong> Maternity Leave (98 days). Select from calendar to auto-create leave period.
+          <br />
+          <strong>UL:</strong> Unpaid Leave (Cuti Tanpa Gaji). No entitlement — recorded in leave history only.
         </p>
       </div>
     </div>

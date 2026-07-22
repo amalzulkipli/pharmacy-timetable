@@ -56,6 +56,8 @@ function getLeaveTypeLabel(type: string) {
       return 'Medical';
     case 'MAT':
       return 'Maternity';
+    case 'UL':
+      return 'Unpaid';
     default:
       return type;
   }
