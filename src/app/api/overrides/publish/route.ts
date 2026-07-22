@@ -64,67 +64,73 @@ export async function POST(request: NextRequest) {
       }
 
       // Update leave balances and history
+      const balanceFieldMap: Record<string, string> = {
+        AL: 'alUsed',
+        RL: 'rlUsed',
+        ML: 'mlUsed',
+        MAT: 'matUsed',
+      };
+      const knownLeaveTypes = ['AL', 'RL', 'EL', 'ML', 'MAT', 'UL'];
+
       for (const change of leaveChanges) {
-        if (change.leaveType === 'AL' || change.leaveType === 'RL' || change.leaveType === 'ML' || change.leaveType === 'MAT') {
-          // Check if leave history already exists for this date/staff
-          const existingHistory = await tx.leaveHistory.findFirst({
-            where: {
+        if (!knownLeaveTypes.includes(change.leaveType)) {
+          console.warn(
+            `publish: unknown leaveType "${change.leaveType}" for staff ${change.staffId} on ${change.date.toISOString().slice(0, 10)} — no history or balance recorded`
+          );
+          continue;
+        }
+
+        const existingHistory = await tx.leaveHistory.findFirst({
+          where: {
+            staffId: change.staffId,
+            date: change.date,
+            status: 'approved',
+          },
+        });
+
+        const leaveYear = change.date.getFullYear();
+
+        if (!existingHistory) {
+          await tx.leaveHistory.create({
+            data: {
               staffId: change.staffId,
               date: change.date,
+              leaveType: change.leaveType,
               status: 'approved',
             },
           });
-
-          if (!existingHistory) {
-            // Create leave history entry
-            await tx.leaveHistory.create({
-              data: {
-                staffId: change.staffId,
-                date: change.date,
-                leaveType: change.leaveType,
-                status: 'approved',
-              },
-            });
-
-            // Update balance - use the leave date's year, not the calendar view year
-            const leaveYear = change.date.getFullYear();
-            const fieldMap: Record<string, string> = {
-              AL: 'alUsed',
-              RL: 'rlUsed',
-              ML: 'mlUsed',
-              MAT: 'matUsed',
-            };
-            const field = fieldMap[change.leaveType];
+          const field = balanceFieldMap[change.leaveType];
+          if (field) {
             await tx.leaveBalance.updateMany({
               where: { staffId: change.staffId, year: leaveYear },
               data: { [field]: { increment: 1 } },
             });
           }
-        } else if (change.leaveType === 'EL' || change.leaveType === 'UL') {
-          // EL/UL have no balance tracking, just record history
-          const existingHistory = await tx.leaveHistory.findFirst({
-            where: {
-              staffId: change.staffId,
-              date: change.date,
-              status: 'approved',
-            },
+        } else if (
+          existingHistory.leaveType !== change.leaveType &&
+          existingHistory.leaveType !== 'MAT'
+        ) {
+          // Reclassification (e.g. AL -> UL under the anti-stacking policy):
+          // relabel the history row and move the balance deduction.
+          // MAT rows belong to the maternity lifecycle APIs and are left alone.
+          await tx.leaveHistory.update({
+            where: { id: existingHistory.id },
+            data: { leaveType: change.leaveType },
           });
-
-          if (!existingHistory) {
-            await tx.leaveHistory.create({
-              data: {
-                staffId: change.staffId,
-                date: change.date,
-                leaveType: change.leaveType,
-                status: 'approved',
-              },
+          const oldField = balanceFieldMap[existingHistory.leaveType];
+          if (oldField) {
+            await tx.leaveBalance.updateMany({
+              where: { staffId: change.staffId, year: leaveYear },
+              data: { [oldField]: { decrement: 1 } },
             });
           }
-        } else {
-          // Unknown leave types were previously dropped with no trace
-          console.warn(
-            `publish: unknown leaveType "${change.leaveType}" for staff ${change.staffId} on ${change.date.toISOString().slice(0, 10)} — no history or balance recorded`
-          );
+          const newField = balanceFieldMap[change.leaveType];
+          if (newField) {
+            await tx.leaveBalance.updateMany({
+              where: { staffId: change.staffId, year: leaveYear },
+              data: { [newField]: { increment: 1 } },
+            });
+          }
         }
       }
 
