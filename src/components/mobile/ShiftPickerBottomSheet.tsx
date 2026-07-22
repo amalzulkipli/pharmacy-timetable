@@ -20,6 +20,7 @@ const LEAVE_OPTIONS = [
   { key: 'RL', label: 'Replacement Leave', color: 'text-green-600', hasModal: false },
   { key: 'EL', label: 'Emergency Leave', color: 'text-orange-600', hasModal: false },
   { key: 'ML', label: 'Medical Leave', color: 'text-red-600', hasModal: false },
+  { key: 'UL', label: 'Unpaid Leave', color: 'text-gray-600', hasModal: false },
   { key: 'MAT', label: 'Maternity Leave (98 days)', color: 'text-blue-600', hasModal: true },
 ];
 

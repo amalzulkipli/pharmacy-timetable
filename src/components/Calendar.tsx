@@ -1238,6 +1238,7 @@ function ShiftDropdown({ value, onChange }: { value: string, onChange: (value: s
         <option value="leave_rl">Replacement Leave</option>
         <option value="leave_el">Emergency Leave</option>
         <option value="leave_ml">Medical Leave</option>
+        <option value="leave_ul">Unpaid Leave</option>
         <option value="leave_mat">Maternity Leave (98 days)...</option>
       </optgroup>
       <optgroup label="Actions">
