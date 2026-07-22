@@ -100,8 +100,8 @@ export async function POST(request: NextRequest) {
               data: { [field]: { increment: 1 } },
             });
           }
-        } else if (change.leaveType === 'EL') {
-          // EL doesn't have balance tracking, just record history
+        } else if (change.leaveType === 'EL' || change.leaveType === 'UL') {
+          // EL/UL have no balance tracking, just record history
           const existingHistory = await tx.leaveHistory.findFirst({
             where: {
               staffId: change.staffId,
@@ -115,11 +115,16 @@ export async function POST(request: NextRequest) {
               data: {
                 staffId: change.staffId,
                 date: change.date,
-                leaveType: 'EL',
+                leaveType: change.leaveType,
                 status: 'approved',
               },
             });
           }
+        } else {
+          // Unknown leave types were previously dropped with no trace
+          console.warn(
+            `publish: unknown leaveType "${change.leaveType}" for staff ${change.staffId} on ${change.date.toISOString().slice(0, 10)} — no history or balance recorded`
+          );
         }
       }
 
