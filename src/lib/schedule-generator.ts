@@ -5,7 +5,8 @@ import type {
   PublicHoliday,
   WeeklyHourSummary,
   ShiftDefinition,
-  StaffMember
+  StaffMember,
+  LeaveType
 } from '../types/schedule';
 import { startOfMonth, endOfMonth, eachDayOfInterval, getDay, format, startOfWeek, endOfWeek, getISOWeek } from 'date-fns';
 import type { DatabaseStaffMember } from '../hooks/useStaff';
@@ -100,7 +101,7 @@ export function generateMonthSchedule(
     const patternIndex = getPatternForWeek(isoWeek);
     const holidayInfo = isHoliday(date);
 
-    const staffShifts: { [staffId: string]: { shift: ShiftDefinition | null; isOverride: boolean; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' } } = {};
+    const staffShifts: { [staffId: string]: { shift: ShiftDefinition | null; isOverride: boolean; isLeave: boolean; leaveType?: LeaveType } } = {};
 
     // Filter staff who are active on this date
     const activeStaff = staffList.filter(staff => {

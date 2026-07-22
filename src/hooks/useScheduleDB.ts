@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ShiftDefinition, ReplacementShift } from '@/types/schedule';
+import type { ShiftDefinition, ReplacementShift, LeaveType } from '@/types/schedule';
 import { apiUrl } from '@/lib/api';
 
 interface OverrideData {
   shift: ShiftDefinition | null;
   isLeave: boolean;
-  leaveType?: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT';
+  leaveType?: LeaveType;
 }
 
 type MonthOverrides = Record<string, OverrideData | ReplacementShift[]>;

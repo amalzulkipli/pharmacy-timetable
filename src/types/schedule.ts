@@ -1,3 +1,5 @@
+export type LeaveType = 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' | 'UL';
+
 export interface StaffMember {
   id: string;
   name: string;
@@ -34,7 +36,7 @@ export interface DaySchedule {
       shift: ShiftDefinition | null;
       isOverride: boolean;
       isLeave: boolean;
-      leaveType?: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT';
+      leaveType?: LeaveType;
     };
   };
   replacementShifts?: ReplacementShift[];

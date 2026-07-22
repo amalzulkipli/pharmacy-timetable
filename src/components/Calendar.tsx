@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { generateMonthSchedule, getWeeklyHourSummaries, getMonthlyHourTotals, exportToCSV } from '../lib/schedule-generator';
 import { STAFF_MEMBERS, SHIFT_DEFINITIONS, RAMADAN_SHIFT_KEYS, getStaffColors } from '../staff-data';
-import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift } from '../types/schedule';
+import type { MonthSchedule, DaySchedule, ShiftDefinition, StaffMember, ReplacementShift, LeaveType } from '../types/schedule';
 import { useStaffMembers, isStaffActiveOnDate, type DatabaseStaffMember } from '../hooks/useStaff';
 import { format, getISOWeek, differenceInMinutes } from 'date-fns';
 import { Download, Edit, Save, X, UserPlus, ChevronLeft, ChevronRight, ChevronDown, User, Clock, Check, Trash2, Copy, ClipboardPaste, MoreVertical, Clipboard } from 'lucide-react';
@@ -115,7 +115,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
   } | null>(null);
 
   // Type for override structure
-  type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' } | ReplacementShift[]>;
+  type OverrideData = Record<string, { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: LeaveType } | ReplacementShift[]>;
 
   // Calculate previous and next month for fetching adjacent month overrides
   const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
@@ -319,7 +319,7 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
             if (staffMember && !isStaffActiveOnDate(staffMember, day.date)) {
               return;
             }
-            const override = overrides[dayKey][staffId] as { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' };
+            const override = overrides[dayKey][staffId] as { shift: ShiftDefinition | null; isLeave: boolean; leaveType?: LeaveType };
             if (override && typeof override === 'object' && !Array.isArray(override)) {
               finalDay.staffShifts[staffId] = {
                 ...finalDay.staffShifts[staffId],
@@ -404,11 +404,11 @@ export default function Calendar({ mode = 'public', hideTitle = false, hideMobil
 
         let newShift: ShiftDefinition | null = null;
         let isLeave = false;
-        let leaveType: 'AL' | 'RL' | 'EL' | 'ML' | 'MAT' | undefined = undefined;
+        let leaveType: LeaveType | undefined = undefined;
 
         if (value.startsWith('leave')) {
           isLeave = true;
-          leaveType = value.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML' | 'MAT';
+          leaveType = value.split('_')[1].toUpperCase() as LeaveType;
         } else if (isCustomTimeKey(value)) {
           const parsed = parseCustomTimeKey(value);
           if (parsed) {
@@ -1610,7 +1610,7 @@ function MobileView({
     if (selectedStaffForEdit) {
       // Map the shift key to the correct format for editBuffer
       let bufferValue = shiftKey;
-      if (['AL', 'RL', 'EL', 'ML', 'MAT'].includes(shiftKey)) {
+      if (['AL', 'RL', 'EL', 'ML', 'MAT', 'UL'].includes(shiftKey)) {
         bufferValue = `leave_${shiftKey.toLowerCase()}`;
       }
       onEditBufferChange(selectedStaffForEdit.dayKey, selectedStaffForEdit.staff.id, bufferValue);
@@ -1894,7 +1894,7 @@ function MobileStaffCard({ staff, staffShift, isEditMode = false, editValue, onT
     } else if (editValue.startsWith('leave_')) {
       displayShift = null;
       displayIsLeave = true;
-      displayLeaveType = editValue.split('_')[1].toUpperCase() as 'AL' | 'RL' | 'EL' | 'ML' | 'MAT';
+      displayLeaveType = editValue.split('_')[1].toUpperCase() as LeaveType;
     } else if (isCustomTimeKey(editValue)) {
       const parsed = parseCustomTimeKey(editValue);
       if (parsed) {
