@@ -240,16 +240,20 @@ Admin logout button visibility is controlled via mobile-specific styling in `Cal
 
 No test framework is currently configured. `npm run lint` runs ESLint as the only automated check.
 
-## Deployment (Dokploy on Hetzner VPS)
+## Deployment (sv1, YeahHost Malaysia)
 
-- **URL:** https://st.farmasialde.com/timetable
-- **Docker service:** `fasttimetable-main-xfkjbh`
-- **Database volume:** `pharmacy_data` → mounted at `/app/prisma/`
-- **DB on host:** `/var/lib/docker/volumes/pharmacy_data/_data/pharmacy.db`
-- **Auto-deploy:** GitHub webhook → Dokploy (push to `main` triggers build + deploy)
-- **Backup:** Daily at 2:00 AM via `/root/scripts/backup-pharmacy-timetable.sh`, 7-day retention
+Moved off Hetzner/Dokploy on 2026-08-30. Dokploy and the Hetzner box no longer exist.
 
-### Production Environment Variables (set in Dokploy, not .env)
+- **Host:** `sv1` `203.106.243.79`, SSH port 6262. Timezone is **`Etc/UTC`**, so crontab hours there are UTC.
+- **URL:** https://st.farmasialde.com/timetable. The A record is DNS-only, not proxied.
+- **Root redirect:** `st.farmasialde.com/` 302s to `/timetable` via a Traefik `redirectregex` router. The old Alde Hub PWA that used to serve the root is retired, and `basePath: '/timetable'` is compiled into the build so this app cannot serve the root itself.
+- **Container:** `alde-timetable`, capped 512m / 1 CPU, on the shared `edge` network fronted by Traefik.
+- **Build and deploy:** GitHub Actions builds `ghcr.io/amalzulkipli/pharmacy-timetable`, sv1 pulls, `docker compose` runs it. Builds happen off-box on purpose: an on-box build was what OOM'd the old server on 2026-05-20.
+- **Backup:** `backup-timetable.sh` on sv1 at `18:10 UTC` (02:10 MYT). Takes a `sqlite3 .backup` snapshot without stopping the app, **verifies it by restoring and counting rows** before reporting success, then pushes to `gdrive:erpmy-backups/timetable`. Source of truth for the script is `~/wiki/personal/general/alde/timetable/`.
+
+> **Repo gotcha:** `docker-compose.yml` in this repo still declares `networks: dokploy-network (external)`. That network does not exist on sv1. The live compose file is on the box and uses `edge`. Fix the repo copy before anyone deploys from it.
+
+### Production Environment Variables (set in the compose file on sv1, not .env)
 
 ```bash
 NEXTAUTH_URL=https://st.farmasialde.com    # WITHOUT /timetable (see quirks below)
@@ -281,4 +285,4 @@ The app uses `Asia/Kuala_Lumpur` timezone (set via `TZ` env in Dockerfile). All 
 - **NextAuth v5 + basePath:** Do NOT set `basePath` in NextAuth config or include `/timetable` in `NEXTAUTH_URL`. Next.js basePath already strips `/timetable` before the request reaches NextAuth. Setting either causes `UnknownAction` errors.
 - **Health check:** Must use `http://0.0.0.0:3000` not `http://localhost:3000` in Dockerfile. Alpine Linux in Docker Swarm doesn't resolve localhost to 0.0.0.0.
 - **Auth redirect:** The `redirect` callback in `src/lib/auth.ts` handles sending users to `/timetable` after login, since NextAuth defaults to redirecting to `/`.
-- **Volume mount:** Ensure no trailing spaces in Dokploy volume mount path — the UI can accidentally include them.
+- **Volume mount:** the `pharmacy_data` volume mounts at `/app/prisma/`. The database file is `pharmacy.db` inside it. When copying it off the box, stop the container first: a live SQLite copy is not a consistent snapshot, and that mistake was caught mid-migration on 2026-08-30.
