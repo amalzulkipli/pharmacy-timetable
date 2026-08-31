@@ -251,7 +251,11 @@ Moved off Hetzner/Dokploy on 2026-08-30. Dokploy and the Hetzner box no longer e
 - **Build and deploy:** GitHub Actions builds `ghcr.io/amalzulkipli/pharmacy-timetable`, sv1 pulls, `docker compose` runs it. Builds happen off-box on purpose: an on-box build was what OOM'd the old server on 2026-05-20.
 - **Backup:** `backup-timetable.sh` on sv1 at `18:10 UTC` (02:10 MYT). Takes a `sqlite3 .backup` snapshot without stopping the app, **verifies it by restoring and counting rows** before reporting success, then pushes to `gdrive:erpmy-backups/timetable`. Source of truth for the script is `~/wiki/personal/general/alde/timetable/`.
 
-> **Repo gotcha:** `docker-compose.yml` in this repo still declares `networks: dokploy-network (external)`. That network does not exist on sv1. The live compose file is on the box and uses `edge`. Fix the repo copy before anyone deploys from it.
+> **This repo builds an image, it does not carry the compose file that runs it.** The root
+> `docker-compose.yml` was a Dokploy-era artifact declaring a `dokploy-network` that exists on no
+> host; removed 2026-08-31, recoverable from git history. See `deploy/README.md`. The compose file
+> that actually runs is `~/wiki/personal/general/alde/timetable/docker-compose.yml`, rsynced to
+> `sv1:~/alde/timetable/`, and it pins `TIMETABLE_TAG` to a commit sha rather than `latest`.
 
 ### Production Environment Variables (set in the compose file on sv1, not .env)
 
@@ -285,4 +289,4 @@ The app uses `Asia/Kuala_Lumpur` timezone (set via `TZ` env in Dockerfile). All 
 - **NextAuth v5 + basePath:** Do NOT set `basePath` in NextAuth config or include `/timetable` in `NEXTAUTH_URL`. Next.js basePath already strips `/timetable` before the request reaches NextAuth. Setting either causes `UnknownAction` errors.
 - **Health check:** Must use `http://0.0.0.0:3000` not `http://localhost:3000` in Dockerfile. Alpine Linux in Docker Swarm doesn't resolve localhost to 0.0.0.0.
 - **Auth redirect:** The `redirect` callback in `src/lib/auth.ts` handles sending users to `/timetable` after login, since NextAuth defaults to redirecting to `/`.
-- **Volume mount:** the `pharmacy_data` volume mounts at `/app/prisma/`. The database file is `pharmacy.db` inside it. When copying it off the box, stop the container first: a live SQLite copy is not a consistent snapshot, and that mistake was caught mid-migration on 2026-08-30.
+- **Volume mount:** the `timetable_pharmacy-data` volume mounts at `/app/prisma`. The database file is `pharmacy.db` inside it. When copying it off the box, stop the container first: a live SQLite copy is not a consistent snapshot, and that mistake was caught mid-migration on 2026-08-30.
