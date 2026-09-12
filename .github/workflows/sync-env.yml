@@ -1,0 +1,118 @@
+# Writes sv1's .env for pharmacy-timetable from the TIMETABLE_ENV secret, then restarts the
+# container on the tag it is already running.
+#
+# Deliberately NOT part of deploy.yml. If every deploy rewrote .env, a value
+# edited on the box would vanish at the next push with nothing to show for it.
+# Env changes a few times a year; deploys happen daily. Coupling them turns a
+# rare action into a daily risk.
+#
+# To change an env var: edit the TIMETABLE_ENV secret, then run this workflow.
+name: sync env
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type timetable to confirm you want to overwrite sv1's .env"
+        required: true
+        type: string
+
+concurrency:
+  group: sync-env-timetable-sv1
+  cancel-in-progress: false
+
+env:
+  HOST: sv1.erpmy.com
+  PORT: "6262"
+  USER: server
+  DIR: /home/server/alde/timetable
+  SERVICE: alde-timetable
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://st.farmasialde.com/timetable
+    steps:
+      - name: Check the confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [ "$CONFIRM" = "timetable" ] || { echo "::error::type timetable to confirm"; exit 1; }
+
+      # Refuses to write anything that does not look like an env file. Without
+      # this, an empty or mangled secret would silently truncate .env and take
+      # production down on the next restart.
+      - name: Sanity-check the secret
+        env:
+          TIMETABLE_ENV: ${{ secrets.TIMETABLE_ENV }}
+        run: |
+          [ -n "$TIMETABLE_ENV" ] || { echo "::error::TIMETABLE_ENV secret is empty"; exit 1; }
+          printf '%s\n' "$TIMETABLE_ENV" > /tmp/env.new
+          TOTAL=$(grep -cve '^[[:space:]]*$' -e '^[[:space:]]*#' /tmp/env.new || true)
+          PAIRS=$(grep -cE '^[A-Za-z_][A-Za-z0-9_]*=' /tmp/env.new || true)
+          echo "non-blank lines: $TOTAL, KEY=VALUE lines: $PAIRS"
+          [ "$TOTAL" -ge 5 ] || { echo "::error::only $TOTAL lines, refusing to write"; exit 1; }
+          [ "$TOTAL" = "$PAIRS" ] || { echo "::error::$((TOTAL-PAIRS)) lines are not KEY=VALUE, refusing"; exit 1; }
+          for K in DATABASE_URL NEXTAUTH_SECRET NEXTAUTH_URL ADMIN_PASSWORD_HASH; do
+            grep -qE "^$K=" /tmp/env.new || { echo "::error::$K missing from the secret"; exit 1; }
+          done
+
+      - name: Load the deploy key
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SV1_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SV1_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Back up, write, restart on the current tag
+        id: write
+        run: |
+          SSH="ssh -p $PORT -o IdentitiesOnly=yes -o BatchMode=yes $USER@$HOST"
+          TAG=$($SSH "docker inspect $SERVICE -f '{{.Config.Image}}'" | sed 's/.*://')
+          echo "restarting on the tag already running: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          STAMP=$(date -u +%Y%m%d-%H%M%S)
+          $SSH "cp $DIR/.env $DIR/.env.bak-$STAMP && chmod 600 $DIR/.env.bak-$STAMP && wc -l < $DIR/.env"
+          echo "backup: $DIR/.env.bak-$STAMP"
+
+          $SSH "cat > $DIR/.env.new && chmod 600 $DIR/.env.new" < /tmp/env.new
+          $SSH "mv $DIR/.env.new $DIR/.env"
+          $SSH "cd $DIR && TIMETABLE_TAG=$TAG docker compose up -d"
+
+      - name: Wait for the app to answer
+        run: |
+          SSH="ssh -p $PORT -o IdentitiesOnly=yes -o BatchMode=yes $USER@$HOST"
+          for i in $(seq 1 30); do
+            code=$($SSH "curl -sSk -o /dev/null -w '%{http_code}' --max-time 15 -H 'Host: st.farmasialde.com' https://127.0.0.1/timetable" || true)
+            [ "$code" = "200" ] && echo "healthy after $((i*10))s" && exit 0
+            sleep 10
+          done
+          echo "::error::the timetable never returned 200 after the env change. The previous .env is on the box as .env.bak-*"
+          exit 1
+
+      - name: Tell Telegram
+        if: always()
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.ALERT_TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.ALERT_TELEGRAM_CHAT_ID }}
+          JOB_STATUS: ${{ job.status }}
+          TAG: ${{ steps.write.outputs.tag }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || exit 0
+          SHORT=$(printf '%s' "$TAG" | cut -c1-8)
+          if [ "$JOB_STATUS" = "success" ]; then
+            MSG=$(printf 'pharmacy-timetable env updated\nrestarted on %s\nst.farmasialde.com/timetable' "$SHORT")
+          else
+            MSG=$(printf 'pharmacy-timetable env sync FAILED\nprevious .env is on the box as .env.bak-*\n%s' "$RUN_URL")
+          fi
+          curl -sS --max-time 20 -X POST \
+            "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "text=${MSG}" \
+            -o /dev/null -w "telegram http %{http_code}\n"
