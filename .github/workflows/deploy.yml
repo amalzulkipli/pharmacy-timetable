@@ -1,0 +1,168 @@
+# Deploys pharmacy-timetable to sv1. Mirrors farmasialde/.github/workflows/deploy.yml;
+# the build stays in build-image.yml and this only pulls, because sv1 also carries
+# erpmy and the AutoCount replica.
+#
+#   push to main -> build-timetable-image runs -> this runs automatically
+#   Actions tab  -> Run workflow -> optional sha box, which is also the rollback
+#
+# The verify step exists because on 2026-09-11 a green deploy notice described a
+# box no traffic reaches while production sat on the old image. A green tick here
+# means st.farmasialde.com is serving what this run deployed.
+name: deploy
+
+on:
+  workflow_run:
+    workflows: ["build-timetable-image"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Commit sha to deploy. Leave blank for the newest build on main. Paste an older sha to roll back."
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-timetable-sv1
+  cancel-in-progress: false
+
+env:
+  HOST: sv1.erpmy.com
+  PORT: "6262"
+  USER: server
+  DIR: /home/server/alde/timetable
+  SERVICE: alde-timetable
+  VHOST: st.farmasialde.com
+  PATHNAME: /timetable
+
+jobs:
+  deploy:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://st.farmasialde.com/timetable
+    steps:
+      # inputs.tag is typed by hand and reaches a shell command, so it arrives
+      # via env: and is rejected unless it is a bare hex sha.
+      - name: Resolve the tag to deploy
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          FALLBACK_SHA: ${{ github.sha }}
+        run: |
+          TAG="$INPUT_TAG"
+          [ -n "$TAG" ] || TAG="$RUN_SHA"
+          [ -n "$TAG" ] || TAG="$FALLBACK_SHA"
+          case "$TAG" in
+            *[!0-9a-fA-F]* | "") echo "::error::tag must be a hex commit sha, got: $TAG"; exit 1 ;;
+          esac
+          if [ ${#TAG} -lt 7 ] || [ ${#TAG} -gt 40 ]; then
+            echo "::error::tag must be 7 to 40 hex characters, got ${#TAG}"; exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying $TAG"
+
+      - name: Load the deploy key
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SV1_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SV1_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Pull and restart
+        run: |
+          ssh -p "$PORT" -o IdentitiesOnly=yes -o BatchMode=yes "$USER@$HOST" \
+            "set -e
+             cd $DIR
+             TIMETABLE_TAG=${{ steps.tag.outputs.tag }} docker compose pull
+             TIMETABLE_TAG=${{ steps.tag.outputs.tag }} docker compose up -d"
+
+      # Checked from inside sv1. st.farmasialde.com is on the same Cloudflare zone
+      # as nexus, which managed-challenges non-Malaysian traffic, and a runner is
+      # never Malaysian.
+      - name: Wait for the app to answer
+        run: |
+          SSH="ssh -p $PORT -o IdentitiesOnly=yes -o BatchMode=yes $USER@$HOST"
+          for i in $(seq 1 30); do
+            code=$($SSH "curl -sSk -o /dev/null -w '%{http_code}' --max-time 15 -H 'Host: $VHOST' https://127.0.0.1$PATHNAME" || true)
+            [ "$code" = "200" ] && echo "healthy after $((i*10))s" && exit 0
+            sleep 10
+          done
+          echo "::error::$VHOST$PATHNAME never returned 200 from the origin"
+          exit 1
+
+      # Next.js has no single bundle reference like the nexus SPA, so the check is
+      # that a content-hashed chunk the origin hands a browser actually exists
+      # inside the container this run deployed.
+      - name: Verify the origin serves this deploy
+        id: verify
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          SSH="ssh -p $PORT -o IdentitiesOnly=yes -o BatchMode=yes $USER@$HOST"
+
+          IMAGE=$($SSH "docker inspect $SERVICE -f '{{.Config.Image}}'")
+          CHUNK=$($SSH "curl -sSk --max-time 30 -H 'Host: $VHOST' https://127.0.0.1$PATHNAME" \
+                 | grep -oE '/_next/static/chunks/[A-Za-z0-9_.-]+\.js' | head -1)
+          BUILD_ID=$($SSH "docker exec $SERVICE ls /app/.next/static" \
+                 | tr -d '\r' | grep -vE '^(chunks|css|media)$' | head -1)
+
+          echo "container image : $IMAGE"
+          echo "next build id   : $BUILD_ID"
+          echo "origin chunk    : $CHUNK"
+          echo "chunk=$CHUNK" >> "$GITHUB_OUTPUT"
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+
+          case "$IMAGE" in
+            *"$TAG") : ;;
+            *) echo "::error::container runs $IMAGE, expected tag $TAG"; exit 1 ;;
+          esac
+          [ -n "$CHUNK" ] || { echo "::error::origin returned no chunk reference"; exit 1; }
+
+          NAME=$(basename "$CHUNK")
+          if ! $SSH "docker exec $SERVICE test -f /app/.next/static/chunks/$NAME"; then
+            echo "::error::the origin serves $NAME but the deployed container does not contain it. Traffic is reaching a different container."
+            exit 1
+          fi
+          echo "OK: the origin is serving the deployed build ($NAME)"
+
+      - name: Tell Telegram
+        if: always()
+        continue-on-error: true
+        env:
+          TG_TOKEN: ${{ secrets.ALERT_TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.ALERT_TELEGRAM_CHAT_ID }}
+          JOB_STATUS: ${{ job.status }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          BUILD_ID: ${{ steps.verify.outputs.build_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || { echo "::warning::telegram secrets missing"; exit 0; }
+          SHORT=$(printf '%s' "$TAG" | cut -c1-8)
+          if [ "$JOB_STATUS" = "success" ]; then
+            MSG=$(printf 'pharmacy-timetable deployed\n%s · build %s\nst.farmasialde.com/timetable' "$SHORT" "$BUILD_ID")
+          else
+            MSG=$(printf 'pharmacy-timetable deploy FAILED\n%s · production is still on the previous build\n%s' "$SHORT" "$RUN_URL")
+          fi
+          curl -sS --max-time 20 -X POST \
+            "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "text=${MSG}" \
+            -o /dev/null -w "telegram http %{http_code}\n"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### pharmacy-timetable"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| tag | \`${{ steps.tag.outputs.tag }}\` |"
+            echo "| build id | \`${{ steps.verify.outputs.build_id }}\` |"
+            echo "| url | https://st.farmasialde.com/timetable |"
+          } >> "$GITHUB_STEP_SUMMARY"
