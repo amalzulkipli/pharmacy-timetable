@@ -77,6 +77,10 @@ jobs:
 
           STAMP=$(date -u +%Y%m%d-%H%M%S)
           $SSH "cp $DIR/.env $DIR/.env.bak-$STAMP && chmod 600 $DIR/.env.bak-$STAMP && wc -l < $DIR/.env"
+          # keep the five most recent backups; without this they accumulate one
+          # per settings change forever, each holding live credentials
+          $SSH "ls -1t $DIR/.env.bak-* 2>/dev/null | tail -n +6 | xargs -r rm -f; ls -1 $DIR/.env.bak-* 2>/dev/null | wc -l" \
+            | sed 's/^/backups retained: /' 
           echo "backup: $DIR/.env.bak-$STAMP"
 
           $SSH "cat > $DIR/.env.new && chmod 600 $DIR/.env.new" < /tmp/env.new
