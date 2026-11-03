@@ -1,14 +1,20 @@
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
+const BASE_PATH = '/timetable'; // must match basePath in next.config.ts
+
 export default auth((req) => {
-  const { pathname } = req.nextUrl;
+  // With NEXTAUTH_URL set (prod), next-auth rebuilds the request and the
+  // pathname keeps the basePath. Strip it, or no check below ever matches.
+  const raw = req.nextUrl.pathname;
+  const pathname =
+    raw === BASE_PATH || raw.startsWith(`${BASE_PATH}/`) ? raw.slice(BASE_PATH.length) || '/' : raw;
   const isLoggedIn = !!req.auth;
 
   // Protect /admin/* routes
   if (pathname.startsWith('/admin')) {
     if (!isLoggedIn) {
-      const loginUrl = new URL('/login', req.url);
+      const loginUrl = new URL(`${BASE_PATH}/login`, req.url);
       loginUrl.searchParams.set('from', pathname);
       return NextResponse.redirect(loginUrl);
     }
