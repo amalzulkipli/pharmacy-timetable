@@ -33,14 +33,15 @@ export default auth((req) => {
     }
 
     // Allow GET requests on public data routes
-    // SECURITY: Only schedule data is public - staff and leave data require auth
+    // SECURITY: /api/staff (exact path) is public too; the route itself strips
+    // leave entitlements when signed out. /api/staff/{id} and leave stay locked.
     if (req.method === 'GET') {
       const publicGetRoutes = [
         '/api/overrides', // Schedule data is meant to be publicly viewable
       ];
-      const isPublicGetRoute = publicGetRoutes.some((route) =>
-        pathname.startsWith(route)
-      );
+      const isPublicGetRoute =
+        publicGetRoutes.some((route) => pathname.startsWith(route)) ||
+        pathname === '/api/staff';
       if (isPublicGetRoute) {
         return NextResponse.next();
       }

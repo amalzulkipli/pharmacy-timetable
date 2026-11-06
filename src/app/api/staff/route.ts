@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { auth } from '@/lib/auth';
 
 // Helper to parse defaultOffDays, handling double-stringify bug
 const parseOffDays = (val: string): number[] => {
@@ -10,9 +11,12 @@ const parseOffDays = (val: string): number[] => {
   return parsed as number[];
 };
 
-// GET /api/staff - Get all staff members
+// GET /api/staff - Get all staff members.
+// Public: the signed-out timetable needs the roster to draw the calendar,
+// so it gets everything except leave entitlements and audit timestamps.
 export async function GET() {
   try {
+    const isLoggedIn = !!(await auth());
     const staff = await prisma.staff.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
@@ -33,6 +37,22 @@ export async function GET() {
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
     }));
+
+    if (!isLoggedIn) {
+      return NextResponse.json(
+        transformed.map((s) => ({
+          id: s.id,
+          name: s.name,
+          role: s.role,
+          weeklyHours: s.weeklyHours,
+          defaultOffDays: s.defaultOffDays,
+          startDate: s.startDate,
+          endDate: s.endDate,
+          colorIndex: s.colorIndex,
+          isActive: s.isActive,
+        }))
+      );
+    }
 
     return NextResponse.json(transformed);
   } catch (error) {
