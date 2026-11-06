@@ -11,9 +11,8 @@ const parseOffDays = (val: string): number[] => {
   return parsed as number[];
 };
 
-// GET /api/staff - Get all staff members.
-// Public: the signed-out timetable needs the roster to draw the calendar,
-// so it gets everything except leave entitlements and audit timestamps.
+// GET /api/staff - Get all staff members. Public: the signed-out timetable
+// needs the roster to draw the calendar.
 export async function GET() {
   try {
     const isLoggedIn = !!(await auth());
@@ -22,37 +21,24 @@ export async function GET() {
       orderBy: { name: 'asc' },
     });
 
+    // Signed out: roster only. Leave entitlements and timestamps need a login.
     const transformed = staff.map((s) => ({
       id: s.staffId,
       name: s.name,
       role: s.role,
       weeklyHours: s.weeklyHours,
       defaultOffDays: parseOffDays(s.defaultOffDays),
-      alEntitlement: s.alEntitlement,
-      mlEntitlement: s.mlEntitlement,
       startDate: s.startDate?.toISOString() || null,
       endDate: s.endDate?.toISOString() || null,
       colorIndex: s.colorIndex,  // Include colorIndex for UI colors
       isActive: s.isActive,
-      createdAt: s.createdAt,
-      updatedAt: s.updatedAt,
+      ...(isLoggedIn && {
+        alEntitlement: s.alEntitlement,
+        mlEntitlement: s.mlEntitlement,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      }),
     }));
-
-    if (!isLoggedIn) {
-      return NextResponse.json(
-        transformed.map((s) => ({
-          id: s.id,
-          name: s.name,
-          role: s.role,
-          weeklyHours: s.weeklyHours,
-          defaultOffDays: s.defaultOffDays,
-          startDate: s.startDate,
-          endDate: s.endDate,
-          colorIndex: s.colorIndex,
-          isActive: s.isActive,
-        }))
-      );
-    }
 
     return NextResponse.json(transformed);
   } catch (error) {
